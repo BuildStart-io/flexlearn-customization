@@ -638,6 +638,113 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      },
+      scheduled_campaigns: {
+        Row: {
+          created_at: string
+          daily_end_time: string
+          daily_start_time: string
+          end_date: string
+          failed_count: number
+          id: string
+          message_template: string
+          sent_count: number
+          start_date: string
+          status: string
+          target_filter: Json
+          title: string
+          total_recipients: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_end_time?: string
+          daily_start_time?: string
+          end_date: string
+          failed_count?: number
+          id?: string
+          message_template: string
+          sent_count?: number
+          start_date: string
+          status?: string
+          target_filter?: Json
+          title: string
+          total_recipients?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_end_time?: string
+          daily_start_time?: string
+          end_date?: string
+          failed_count?: number
+          id?: string
+          message_template?: string
+          sent_count?: number
+          start_date?: string
+          status?: string
+          target_filter?: Json
+          title?: string
+          total_recipients?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      },
+      scheduled_messages: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          customer_name: string
+          error_message: string | null
+          id: string
+          message: string
+          phone_number: string
+          scheduled_at: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          customer_name: string
+          error_message?: string | null
+          id?: string
+          message: string
+          phone_number: string
+          scheduled_at: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          customer_name?: string
+          error_message?: string | null
+          id?: string
+          message?: string
+          phone_number?: string
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_campaigns"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {

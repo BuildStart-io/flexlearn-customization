@@ -37,5 +37,19 @@ SELECT cron.schedule(
   $$
 );
 
+-- Scheduled broadcasts / anti-spam message dispatcher.
+SELECT cron.schedule(
+  'send-scheduled-messages',
+  '* * * * *',
+  $$
+  SELECT net.http_post(
+    url     := '<FUNCTIONS_URL>/send-scheduled',
+    headers := '{"Content-Type":"application/json","Authorization":"Bearer <SERVICE_ROLE_KEY>"}'::jsonb,
+    body    := '{}'::jsonb
+  );
+  $$
+);
+
 -- Inspect:  SELECT jobid, jobname, schedule FROM cron.job;
 -- Remove:   SELECT cron.unschedule('drain-message-queue');
+

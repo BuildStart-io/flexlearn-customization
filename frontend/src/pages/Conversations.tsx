@@ -21,11 +21,13 @@ import {
   HandMetal,
   Trash2,
   Crosshair,
+  UserPlus,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import AddCustomerDialog from "@/components/customers/AddCustomerDialog";
 
 interface Message {
   id: string;
@@ -62,6 +64,7 @@ export default function Conversations() {
   const [takenOverChats, setTakenOverChats] = useState<Set<string>>(new Set());
   const [togglingTakeover, setTogglingTakeover] = useState(false);
   const [trackedPhones, setTrackedPhones] = useState<Map<string, string[]>>(new Map());
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -580,25 +583,37 @@ export default function Conversations() {
                       {selectedPhone}
                     </p>
                   </div>
-                  <Button
-                    variant={takenOverChats.has(selectedPhone) ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => toggleTakeover(selectedPhone)}
-                    disabled={togglingTakeover}
-                    className="gap-1.5"
-                  >
-                    {takenOverChats.has(selectedPhone) ? (
-                      <>
-                        <HandMetal className="h-4 w-4" />
-                        <span className="hidden sm:inline">Taken Over</span>
-                      </>
-                    ) : (
-                      <>
-                        <Bot className="h-4 w-4" />
-                        <span className="hidden sm:inline">Bot Active</span>
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAddCustomer(true)}
+                      className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                      title="Register this contact as a paying student/customer"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      <span className="hidden sm:inline">Add Customer</span>
+                    </Button>
+                    <Button
+                      variant={takenOverChats.has(selectedPhone) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleTakeover(selectedPhone)}
+                      disabled={togglingTakeover}
+                      className="gap-1.5"
+                    >
+                      {takenOverChats.has(selectedPhone) ? (
+                        <>
+                          <HandMetal className="h-4 w-4" />
+                          <span className="hidden sm:inline">Taken Over</span>
+                        </>
+                      ) : (
+                        <>
+                          <Bot className="h-4 w-4" />
+                          <span className="hidden sm:inline">Bot Active</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Messages */}
@@ -694,6 +709,18 @@ export default function Conversations() {
             )}
           </div>
         </Card>
+
+        {/* Add Customer Modal */}
+        {selectedPhone && (
+          <AddCustomerDialog
+            open={showAddCustomer}
+            onOpenChange={setShowAddCustomer}
+            defaultPhone={selectedPhone}
+            defaultName={
+              threads.find((t) => t.phone_number === selectedPhone)?.sender_name || ""
+            }
+          />
+        )}
       </div>
     </DashboardLayout>
   );
