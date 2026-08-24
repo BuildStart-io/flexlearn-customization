@@ -1,105 +1,68 @@
-# Flexlearn Virtual College — AI WhatsApp Support Agent (`flexlearn-customization`)
+# Flexlearn Customizations (`flexlearn-customization`)
 
-Customized self-hosted AI WhatsApp Student Counsellor and Learning Assistant built for **Flexlearn Virtual College (Pvt) Ltd**.
+This repository contains the custom features and system enhancements built on top of the BuildStart self-hosted platform for **Flexlearn Virtual College (Pvt) Ltd**.
 
-The platform automates 24/7 student guidance, customer persona identification (Working Professional vs Business Owner), pitching the **"90-Day SME Growth, Sales & Leadership Challenge"**, delivering free sample preview audios, sharing student testimonials, managing PayHere and Sampath Bank payments, onboarding students with credentials for `www.flexlearn.lk`, executing automated follow-ups, and managing 3-month renewal sequences.
+---
 
-```
-┌──────────── Flexlearn Server ────────────────────────┐
-│  frontend (Vite dashboard - Flexlearn AI Manager)     │
-│        │ supabase-js                                 │
-│  self-hosted Supabase                                │
-│    postgres + auth + kong + edge-runtime             │
-│      ├ webhook-wsender ─► message_queue              │
-│      ├ process-message  (queue drainer, cron)        │
-│      ├ ai-chat  ── Flexlearn Student Counsellor ─────┼──► Lovable ai-generate ──► AI Gateway
-│      ├ send-whatsapp ──► WAHA / Wsender              │
-│      ├ send-followups ──► Lead & Renewal Followups   │
-│      ├ media-storage ──► MinIO                       │
-│      └ send-push ──────► Firebase                    │
-└──────────────────────────────────────────────────────┘
-```
+## 🚀 Added Customizations & Features
 
-## Layout
+### 1. Customers Management Tab (`/dashboard/customers`)
+A dedicated dashboard for managing verified paying students and clients:
+- **Automatic Aggregation**: Aggregates unique paying students from the `orders` table, tracking lifetime spend (LKR), total orders, enrolled programs (*"90-Day SME Growth, Sales & Leadership Challenge"*), and district.
+- **Search & Filtering**: Real-time search across student names, WhatsApp phone numbers, districts, and products, with status filters (*Paid/Active*, *Delivered*, *Processing*, *Pending*).
+- **Student Profile Drawer**: Inspect complete order histories, payment methods, delivery status, and LMS notes for any student.
+- **Manual Customer Registration**: An **"Add Customer"** modal allows admins and staff to manually enroll students and record offline bank payments directly into the system.
+- **Export Data**: One-click export of customer records to CSV.
 
-```
-db/01_schema.sql        full public schema (profiles, products, faqs, leads, conversations, orders, etc.)
-db/02_seed.sql          Flexlearn catalog seed (17 modules, 367 audios, 14 FAQs, Sampath/PayHere settings)
-db/03_cron.sql          pg_cron jobs (queue drainer, follow-ups & renewal triggers)
-supabase/functions/     all edge functions (ai-chat counsellor, process-message, send-followups, etc.)
-frontend/               Flexlearn management dashboard (Vite + React + TS + Tailwind + Shadcn)
-.env.example            environment variables configuration
-```
+---
 
-## Boot order
+### 2. Schedule Tab with Anti-Spam Jitter Engine (`/dashboard/schedule`)
+An intelligent WhatsApp broadcast scheduler designed to prevent spam detection:
+- **Anti-Spam Time Slot & Jitter Algorithm**:
+  - Divides the chosen daily time window (e.g. `09:00` to `17:00`) across the selected date range by the number of recipient students.
+  - Shuffles the recipient queue and applies a **randomized non-linear jitter timestamp** within each time slot.
+  - Disperses message deliveries naturally throughout the day (e.g., *"1 message every ~8.5 minutes with random jitter"*), protecting the WhatsApp number from bulk broadcast bans.
+- **Personalized Message Templates**: Supports dynamic variable interpolation (`{name}`, `{product}`, `{district}`) with live WhatsApp message bubble preview.
+- **Audience Selection**: Target all paying customers or filter by specific programs/districts.
+- **Live Timeline Simulation**: Previews the exact simulated dispatch timestamps before confirming the schedule.
+- **Campaign Controls**: Real-time progress bars (`X / Y sent`), pause, resume, and per-message delivery logs.
 
-1. **Start Supabase self-hosted** (the official `docker/docker-compose.yml` from
-   `supabase/supabase`). Keep `db`, `auth`, `rest`, `kong`, `storage`, `studio`,
-   `functions` (edge-runtime).
-2. **Schema**
-   ```bash
-   psql "$DB_URL" -f db/01_schema.sql
-   psql "$DB_URL" -f db/02_seed.sql
-   ```
-3. **Auth**: disable public sign-ups (`GOTRUE_DISABLE_SIGNUP=true`) — this product is
-   login-only. Create your first user in Studio, then run the commented block at the
-   bottom of `02_seed.sql` to give it a profile + `super_admin` role.
-4. **Edge functions**: mount `supabase/functions` into the edge-runtime container and
-   give it the function env vars from `.env.example`. All functions verify JWTs in
-   code, so run the runtime with `--no-verify-jwt`.
-5. **Cron**: fill in the placeholders in `db/03_cron.sql` and run it.
-6. **WAHA**: point its webhook at
-   `http://<your-host>:8000/functions/v1/webhook-wsender`.
-7. **MinIO**: one public bucket per business, named `biz-<user_id>`; `media-storage`
-   creates them on demand.
-8. **Frontend**
-   ```bash
-   cd frontend && cp ../.env.example .env   # keep only the VITE_ lines
-   npm install && npm run dev
-   ```
-9. **Regenerate DB types** after any schema change:
-   ```bash
-   npx supabase gen types typescript --db-url "$DB_URL" > frontend/src/integrations/supabase/types.ts
-   ```
+---
 
-## The Lovable side
+### 3. Direct Customer Enrollment from Live Chats (`/dashboard/conversations`)
+- Added an **"Add Customer"** action directly in the conversation header.
+- Instantly converts chatting leads into registered paying students by auto-populating their name and WhatsApp number into the enrollment dialog.
 
-One function, `ai-generate`:
+---
+
+### 4. Background Automated Broadcast Dispatcher
+- **Edge Function (`supabase/functions/send-scheduled`)**: Checks and claims pending scheduled messages whose scheduled timestamp has arrived, dispatches them through the WAHA WhatsApp API, and tracks delivery status.
+- **Chat History Synchronization**: Automatically inserts outbound broadcast logs into the `conversations` table so scheduled messages appear seamlessly inside each customer's live chat thread.
+- **Automated Scheduling (`pg_cron`)**: Runs every minute via PostgreSQL cron triggers to process pending broadcasts in real time.
+
+---
+
+### 5. Dynamic Database-Driven AI Prompt & Payment Engine
+- **100% Dynamic Context**: The AI Student Counsellor prompt in `supabase/functions/ai-chat` dynamically reads active products, FAQs, delivery settings, and payment accounts from the database `settings` table.
+- **Zero-Code Payment Updates**: Any bank accounts (Sampath Bank, Commercial Bank), online links (PayHere), or digital wallets added under **Settings → Payment** are automatically formatted and offered by the bot in real time.
+
+---
+
+## 📁 Key File Structure of Customizations
 
 ```
-POST https://<lovable-ref>.supabase.co/functions/v1/ai-generate
-x-bot-key: <bot key>
-{ "systemPrompt": "...", "messages": [{"role":"user","content":"hi"}],
-  "model": "google/gemini-3-flash-preview", "maxTokens": 500 }
-
-200 { "text": "...", "model": "...", "usage": { "promptTokens": 812, ... } }
+├── db/
+│   ├── 03_cron.sql                   # pg_cron job configuration including send-scheduled
+│   └── 04_scheduled_broadcasts.sql   # Schema for scheduled_campaigns & scheduled_messages
+├── frontend/src/
+│   ├── pages/
+│   │   ├── Customers.tsx             # Customers dashboard & order history view
+│   │   ├── Schedule.tsx              # Broadcast campaign manager & anti-spam visualizer
+│   │   └── Conversations.tsx         # Chat view with direct "Add Customer" integration
+│   └── components/
+│       └── customers/
+│           └── AddCustomerDialog.tsx # Reusable customer enrollment & order creation modal
+└── supabase/functions/
+    ├── ai-chat/                      # Dynamic student counsellor & payment loader
+    └── send-scheduled/               # Automated WhatsApp broadcast dispatcher worker
 ```
-
-Errors: `401` bad bot key, `400` bad request, `429` rate limited (retry with
-backoff), `402` credits exhausted, `502` upstream failure.
-
-## Running many bots against the same gateway
-
-This is the point of the split, and it works without changes:
-
-- Each bot is its own self-hosted stack (own Postgres, own WAHA session, own MinIO
-  bucket) with its own `BOT_API_KEY`.
-- `ai-generate` is stateless, so N bots hitting it concurrently is just N HTTP
-  requests; nothing is shared, nothing collides.
-- Add a bot: append a new key to the gateway's `BOT_API_KEYS` (comma-separated),
-  set `BOT_API_KEY` on the new bot, done. No redeploy of the Lovable function needed
-  beyond the secret update.
-- Revoke a bot: remove its key from `BOT_API_KEYS`; it starts getting `401`.
-- Quotas stay **local** to each bot (`ai_usage_logs`, `contact_usage`, plan tiers).
-  The gateway deliberately enforces no per-key ceiling, so all bots draw from the
-  same Lovable credit pool. Watch total credits, and if one tenant must be capped,
-  cap it in that bot's `platform_settings.plan_limits`.
-- Only shared cost centre is AI credits. Everything else scales per bot.
-
-## Security notes
-
-- `LOVABLE_API_KEY` never leaves Lovable. Bots only ever hold a bot key.
-- Bot keys are bearer credentials: keep them in the edge-runtime env, never in
-  frontend code.
-- All tables are RLS-protected and scoped by `user_id`; roles live in `user_roles`
-  and are checked with the `has_role()` security-definer function.
