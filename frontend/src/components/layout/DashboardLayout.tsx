@@ -98,7 +98,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex items-center justify-between p-3 border-b bg-card sticky top-0 z-30">
           <div className="flex items-center gap-2">
             <img src={buildstartLogo} alt="BuildStart" className="h-6 w-6" />
-            <span className="font-semibold text-sm">{isAdminRoute ? "Super Admin" : "BuildStart"}</span>
+            <span className="font-semibold text-sm">{isAdminRoute ? "Super Admin" : "Flexlearn AI"}</span>
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />
@@ -112,8 +112,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-card border-r">
             <div className="flex flex-col h-full">
               <div className="flex items-center gap-2 p-6 border-b">
-                <img src={buildstartLogo} alt="BuildStart" className="h-7 w-7" />
-                <span className="font-semibold text-lg">{isAdminRoute ? "Super Admin" : "BuildStart"}</span>
+                <img src={buildstartLogo} alt="Flexlearn" className="h-7 w-7" />
+                <span className="font-semibold text-lg">{isAdminRoute ? "Super Admin" : "Flexlearn AI"}</span>
               </div>
 
               <nav className="flex-1 p-4 space-y-1">

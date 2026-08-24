@@ -319,7 +319,12 @@ async function processMessage(
     message: replyMessage,
     direction: "outbound",
     message_type: replyImageUrl ? "image" : "text",
-    metadata: { correlationId: corrId, ...(faqMedia.length > 0 ? { faqMedia } : {}) },
+    metadata: { 
+      correlationId: corrId, 
+      ...(faqMedia.length > 0 ? { faqMedia } : {}),
+      ...(aiData.customerType ? { customerType: aiData.customerType } : {}),
+      ...(aiData.leadStage ? { leadStage: aiData.leadStage } : {})
+    },
     user_id: userId,
   });
   mark("store_outbound_end");

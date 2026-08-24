@@ -29,6 +29,12 @@ export const LEAD_STATUSES = [
   { value: "lost", label: "Lost" },
 ];
 
+export const CUSTOMER_TYPE_OPTIONS = [
+  { value: "professional", label: "Professional", emoji: "💼" },
+  { value: "business_owner", label: "Business Owner", emoji: "🏢" },
+  { value: "corporate", label: "Corporate", emoji: "🏛️" },
+];
+
 const UNASSIGNED = "__unassigned__";
 const ALL = "__all__";
 
@@ -43,6 +49,9 @@ interface LeadRow {
   id: string | null;
   phone_number: string;
   customer_name: string;
+  customer_type?: string | null;
+  lead_stage?: string | null;
+  email?: string | null;
   assigned_to: string | null;
   status: string;
   inbound_count: number;
@@ -63,6 +72,7 @@ export default function Leads() {
   const [search, setSearch] = useState("");
   const [filterStaff, setFilterStaff] = useState<string>(ALL);
   const [filterStatus, setFilterStatus] = useState<string>(ALL);
+  const [filterType, setFilterType] = useState<string>(ALL);
   const [qualifiedOnly, setQualifiedOnly] = useState(false);
 
   const isOwner = !isStaff;
@@ -86,7 +96,7 @@ export default function Leads() {
           .eq("user_id", effectiveUserId),
         supabase
           .from("leads" as any)
-          .select("id, phone_number, customer_name, assigned_to, status")
+          .select("id, phone_number, customer_name, customer_type, lead_stage, email, assigned_to, status")
           .eq("user_id", effectiveUserId),
         supabase
           .from("staff_accounts")
@@ -113,7 +123,7 @@ export default function Leads() {
 
       const stats = new Map<
         string,
-        { inbound: number; name: string; last: string }
+        { inbound: number; name: string; last: string; customerType?: string; leadStage?: string }
       >();
       (convRes.data || []).forEach((m: any) => {
         const entry = stats.get(m.phone_number) || {
@@ -124,6 +134,12 @@ export default function Leads() {
         if (m.direction === "inbound") {
           entry.inbound += 1;
           if (!entry.name) entry.name = (m.metadata as any)?.senderName || "";
+        }
+        if ((m.metadata as any)?.customerType && !entry.customerType) {
+          entry.customerType = (m.metadata as any)?.customerType;
+        }
+        if ((m.metadata as any)?.leadStage && !entry.leadStage) {
+          entry.leadStage = (m.metadata as any)?.leadStage;
         }
         if (m.created_at > entry.last) entry.last = m.created_at;
         stats.set(m.phone_number, entry);
@@ -140,11 +156,13 @@ export default function Leads() {
             user_id: effectiveUserId,
             phone_number: phone,
             customer_name: s.name || null,
+            customer_type: s.customerType || null,
+            lead_stage: s.leadStage || null,
           }));
         if (missing.length > 0) {
           const { data: inserted } = await (supabase.from("leads" as any) as any)
             .upsert(missing, { onConflict: "user_id,phone_number" })
-            .select("id, phone_number, customer_name, assigned_to, status");
+            .select("id, phone_number, customer_name, customer_type, lead_stage, email, assigned_to, status");
           ((inserted as any[]) || []).forEach((l) => leadMap.set(l.phone_number, l));
         }
       }
@@ -160,6 +178,9 @@ export default function Leads() {
           id: l?.id ?? null,
           phone_number: phone,
           customer_name: l?.customer_name || s?.name || "Unknown",
+          customer_type: l?.customer_type || s?.customerType || null,
+          lead_stage: l?.lead_stage || s?.leadStage || null,
+          email: l?.email || null,
           assigned_to: l?.assigned_to ?? null,
           status: l?.status || "new",
           inbound_count: s?.inbound || 0,
@@ -327,10 +348,11 @@ export default function Leads() {
         );
       }
       if (filterStatus !== ALL) list = list.filter((r) => r.status === filterStatus);
+      if (filterType !== ALL) list = list.filter((r) => r.customer_type === filterType);
       if (qualifiedOnly) list = list.filter(isQualified);
     }
     return list;
-  }, [rows, isStaff, user, search, isOwner, filterStaff, filterStatus, qualifiedOnly]);
+  }, [rows, isStaff, user, search, isOwner, filterStaff, filterStatus, filterType, qualifiedOnly]);
 
   if (planLoading) {
     return (
@@ -431,6 +453,19 @@ export default function Leads() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-[170px]">
+                  <SelectValue placeholder="All personas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All Personas</SelectItem>
+                  {CUSTOMER_TYPE_OPTIONS.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.emoji} {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 variant={qualifiedOnly ? "default" : "outline"}
                 onClick={() => setQualifiedOnly((v) => !v)}
@@ -469,6 +504,19 @@ export default function Leads() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium truncate">{row.customer_name}</p>
+                          {row.customer_type && (
+                            <Badge variant="outline" className="text-[10px] bg-accent/20">
+                              {row.customer_type === "professional" && "💼 Professional"}
+                              {row.customer_type === "business_owner" && "🏢 Business Owner"}
+                              {row.customer_type === "corporate" && "🏛️ Corporate"}
+                              {!["professional", "business_owner", "corporate"].includes(row.customer_type) && row.customer_type}
+                            </Badge>
+                          )}
+                          {row.lead_stage && (
+                            <Badge variant="secondary" className="text-[10px] capitalize">
+                              {row.lead_stage.replace("_", " ")}
+                            </Badge>
+                          )}
                           {qualified && (
                             <Badge className="text-[10px]">
                               <Sparkles className="h-3 w-3 mr-1" />
@@ -476,14 +524,14 @@ export default function Leads() {
                             </Badge>
                           )}
                           {row.has_order && (
-                            <Badge variant="secondary" className="text-[10px]">
-                              Ordered
+                            <Badge variant="default" className="text-[10px] bg-green-600">
+                              Enrolled
                             </Badge>
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {row.phone_number} · {row.inbound_count} message
-                          {row.inbound_count === 1 ? "" : "s"}
+                          {row.inbound_count === 1 ? "" : "s"}{row.email ? ` · ${row.email}` : ""}
                         </p>
                       </div>
 

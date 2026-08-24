@@ -233,7 +233,11 @@ export type Database = {
           assigned_to: string | null
           created_at: string
           customer_name: string | null
+          customer_type: string | null
+          email: string | null
           id: string
+          lead_stage: string | null
+          notes: string | null
           phone_number: string
           status: string
           updated_at: string
@@ -243,7 +247,11 @@ export type Database = {
           assigned_to?: string | null
           created_at?: string
           customer_name?: string | null
+          customer_type?: string | null
+          email?: string | null
           id?: string
+          lead_stage?: string | null
+          notes?: string | null
           phone_number: string
           status?: string
           updated_at?: string
@@ -253,7 +261,11 @@ export type Database = {
           assigned_to?: string | null
           created_at?: string
           customer_name?: string | null
+          customer_type?: string | null
+          email?: string | null
           id?: string
+          lead_stage?: string | null
+          notes?: string | null
           phone_number?: string
           status?: string
           updated_at?: string

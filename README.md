@@ -1,38 +1,34 @@
-# BuildStart.io — self-hosted WhatsApp AI bot
+# Flexlearn Virtual College — AI WhatsApp Support Agent (`flexlearn-customization`)
 
-Everything in this bundle runs on **your** infrastructure. The only thing left on
-Lovable is a single stateless function, `ai-generate`, which forwards prompts to
-the Lovable AI Gateway and returns text. It touches no database and stores nothing.
+Customized self-hosted AI WhatsApp Student Counsellor and Learning Assistant built for **Flexlearn Virtual College (Pvt) Ltd**.
+
+The platform automates 24/7 student guidance, customer persona identification (Working Professional vs Business Owner), pitching the **"90-Day SME Growth, Sales & Leadership Challenge"**, delivering free sample preview audios, sharing student testimonials, managing PayHere and Sampath Bank payments, onboarding students with credentials for `www.flexlearn.lk`, executing automated follow-ups, and managing 3-month renewal sequences.
 
 ```
-┌──────────── your server ─────────────────────────────┐
-│  frontend (Vite dashboard)                           │
+┌──────────── Flexlearn Server ────────────────────────┐
+│  frontend (Vite dashboard - Flexlearn AI Manager)     │
 │        │ supabase-js                                 │
 │  self-hosted Supabase                                │
 │    postgres + auth + kong + edge-runtime             │
 │      ├ webhook-wsender ─► message_queue              │
 │      ├ process-message  (queue drainer, cron)        │
-│      ├ ai-chat  ── builds prompt, quotas, orders ────┼──► Lovable ai-generate ──► AI Gateway
+│      ├ ai-chat  ── Flexlearn Student Counsellor ─────┼──► Lovable ai-generate ──► AI Gateway
 │      ├ send-whatsapp ──► WAHA / Wsender              │
+│      ├ send-followups ──► Lead & Renewal Followups   │
 │      ├ media-storage ──► MinIO                       │
 │      └ send-push ──────► Firebase                    │
 └──────────────────────────────────────────────────────┘
 ```
 
-`ai-chat` stays local on purpose: catalog, FAQs, plan quotas, order extraction and
-`ai_usage_logs` never leave your database. The prompt, model
-(`google/gemini-3-flash-preview`) and `max_tokens` (500) are byte-identical to the
-Lovable-hosted version, so reply quality is unchanged.
-
 ## Layout
 
 ```
-db/01_schema.sql        full public schema: tables, enums, RLS, GRANTs, functions, triggers
-db/02_seed.sql          plan limits + first-admin template (no tenant data — clean start)
-db/03_cron.sql          pg_cron jobs (queue drainer, follow-ups)
-supabase/functions/     all 12 edge functions (ai-generate is NOT here — it lives on Lovable)
-frontend/               the full dashboard, including super-admin and billing pages
-.env.example            every variable, split by process
+db/01_schema.sql        full public schema (profiles, products, faqs, leads, conversations, orders, etc.)
+db/02_seed.sql          Flexlearn catalog seed (17 modules, 367 audios, 14 FAQs, Sampath/PayHere settings)
+db/03_cron.sql          pg_cron jobs (queue drainer, follow-ups & renewal triggers)
+supabase/functions/     all edge functions (ai-chat counsellor, process-message, send-followups, etc.)
+frontend/               Flexlearn management dashboard (Vite + React + TS + Tailwind + Shadcn)
+.env.example            environment variables configuration
 ```
 
 ## Boot order

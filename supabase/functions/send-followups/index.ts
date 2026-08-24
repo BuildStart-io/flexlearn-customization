@@ -135,9 +135,74 @@ Deno.serve(async (req) => {
             message_type: "text",
             metadata: { type: "inactivity_followup" },
           });
-          summary.push({ userId, phone: entry.phone });
+          summary.push({ userId, phone: entry.phone, type: "inactivity_followup" });
         } catch (e) {
           console.error("follow-up error", entry.phone, (e as Error).message);
+        }
+      }
+
+      // 4. Renewal follow-up sequence for active students (e.g. Day 85 of 90-day access)
+      const { data: renewalSetting } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "renewal_followup")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const renewalCfg = (renewalSetting?.value || {}) as { enabled?: boolean; text?: string; days?: number };
+      if (renewalCfg.enabled && renewalCfg.text?.trim()) {
+        const renewalDays = Number(renewalCfg.days) || 85;
+        const renewalCutoffStart = new Date(Date.now() - (renewalDays + 7) * 24 * 3600 * 1000).toISOString();
+        const renewalCutoffEnd = new Date(Date.now() - renewalDays * 24 * 3600 * 1000).toISOString();
+
+        const { data: eligibleOrders } = await supabase
+          .from("orders")
+          .select("customer_phone, whatsapp_phone, created_at")
+          .eq("user_id", userId)
+          .gte("created_at", renewalCutoffStart)
+          .lte("created_at", renewalCutoffEnd);
+
+        for (const ord of eligibleOrders || []) {
+          const phone = ord.whatsapp_phone || ord.customer_phone;
+          if (!phone) continue;
+
+          // Check if renewal reminder was already sent
+          const { data: priorRenewal } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("phone_number", phone)
+            .eq("direction", "outbound")
+            .contains("metadata", { type: "renewal_followup" })
+            .limit(1)
+            .maybeSingle();
+
+          if (priorRenewal) continue;
+
+          try {
+            const res = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${serviceKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ to: phone, message: renewalCfg.text.trim(), sessionApiKey }),
+            });
+            if (res.ok) {
+              await supabase.from("conversations").insert({
+                user_id: userId,
+                phone_number: phone,
+                message: renewalCfg.text.trim(),
+                direction: "outbound",
+                message_type: "text",
+                metadata: { type: "renewal_followup" },
+              });
+              summary.push({ userId, phone, type: "renewal_followup" });
+              console.log(`[send-followups] Renewal reminder sent to ${phone}`);
+            }
+          } catch (renErr) {
+            console.error("renewal follow-up error", phone, (renErr as Error).message);
+          }
         }
       }
     }
