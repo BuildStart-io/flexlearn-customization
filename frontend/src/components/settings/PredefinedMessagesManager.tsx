@@ -21,14 +21,10 @@ import {
   FileText,
   Hash,
   Search,
-  ExternalLink,
   Loader2,
   Upload,
   Save,
   Eye,
-  Copy,
-  Check,
-  Link as LinkIcon,
   Sparkles,
 } from "lucide-react";
 
@@ -108,10 +104,8 @@ export default function PredefinedMessagesManager({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [keywordInput, setKeywordInput] = useState("");
   const [triggerCountInput, setTriggerCountInput] = useState<string>("3");
-  const [customMediaUrlInput, setCustomMediaUrlInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [previewRule, setPreviewRule] = useState<PredefinedRule | null>(null);
-  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   const handleOpenAdd = () => {
     setEditingRule({
@@ -128,7 +122,6 @@ export default function PredefinedMessagesManager({
     });
     setTriggerCountInput("3");
     setKeywordInput("");
-    setCustomMediaUrlInput("");
     setIsDialogOpen(true);
   };
 
@@ -136,7 +129,6 @@ export default function PredefinedMessagesManager({
     setEditingRule({ ...rule });
     setTriggerCountInput(String(rule.trigger_count ?? (rule.trigger_type === "message_count" ? 3 : 1)));
     setKeywordInput(rule.keywords ? rule.keywords.join(", ") : "");
-    setCustomMediaUrlInput("");
     setIsDialogOpen(true);
   };
 
@@ -208,16 +200,6 @@ export default function PredefinedMessagesManager({
     }
   };
 
-  const handleAddMediaUrl = () => {
-    if (!customMediaUrlInput.trim() || !editingRule) return;
-    const currentUrls = editingRule.media_urls || [];
-    setEditingRule({
-      ...editingRule,
-      media_urls: [...currentUrls, customMediaUrlInput.trim()],
-    });
-    setCustomMediaUrlInput("");
-  };
-
   const handleRemoveMediaUrl = async (url: string) => {
     if (!editingRule) return;
     try {
@@ -230,13 +212,6 @@ export default function PredefinedMessagesManager({
       ...editingRule,
       media_urls: currentUrls.filter((u) => u !== url),
     });
-  };
-
-  const handleCopyUrl = (url: string) => {
-    navigator.clipboard.writeText(url);
-    setCopiedUrl(url);
-    toast({ title: "Link copied to clipboard" });
-    setTimeout(() => setCopiedUrl(null), 2000);
   };
 
   const getMediaIcon = (type?: string) => {
@@ -255,28 +230,30 @@ export default function PredefinedMessagesManager({
 
   return (
     <div className="space-y-6 w-full min-w-0">
-      <Card className="w-full min-w-0 overflow-hidden border-border shadow-sm">
-        <CardHeader className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
-            <div className="min-w-0 flex-1">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <MessageSquare className="h-5 w-5 text-primary shrink-0" />
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
                 Predefined Automated Messages & Media
               </CardTitle>
-              <CardDescription className="text-xs sm:text-sm mt-1">
-                Configure automated responses sent at specific conversation milestones (message count) or when customers ask for previews, demos, and testimonials.
+              <CardDescription>
+                Configure automated responses sent at specific conversation milestones (message count) or when customers ask for previews, demos, and testimonials
               </CardDescription>
             </div>
-            <div className="flex items-center justify-end gap-2 shrink-0">
-              <Button variant="default" size="sm" onClick={handleOpenAdd} className="shadow-xs">
-                <Plus className="mr-1.5 h-4 w-4" />
-                Add Predefined Rule
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenAdd}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Predefined Rule
+            </Button>
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-6 min-w-0">
+        <CardContent className="space-y-6">
           {/* Rules List */}
           {rules.length === 0 ? (
             <div className="text-center py-12 border-2 border-dashed rounded-xl border-muted p-8">
@@ -367,18 +344,13 @@ export default function PredefinedMessagesManager({
                               {rule.media_urls?.map((url, idx) => {
                                 const meta = parseMediaUrl(url, rule.media_type);
                                 return (
-                                  <a
+                                  <div
                                     key={idx}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1.5 text-[11px] bg-background border border-border/80 hover:border-primary/40 hover:bg-accent/50 px-2.5 py-1 rounded-md transition-all group max-w-full truncate"
-                                    title={url}
+                                    className="inline-flex items-center gap-1.5 text-[11px] bg-background border border-border/80 px-2.5 py-1 rounded-md max-w-full truncate"
                                   >
                                     <span className="shrink-0">{getMediaIcon(meta.type)}</span>
-                                    <span className="font-medium text-foreground truncate max-w-[200px]">{meta.fileName}</span>
-                                    <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary shrink-0 opacity-70" />
-                                  </a>
+                                    <span className="font-medium text-foreground truncate max-w-[220px]">{meta.fileName}</span>
+                                  </div>
                                 );
                               })}
                             </div>
@@ -571,7 +543,7 @@ export default function PredefinedMessagesManager({
                 />
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                   <Sparkles className="h-3 w-3 text-primary shrink-0" />
-                  Emojis and links (Google Drive, PayHere) are fully supported.
+                  Emojis and text formatting are fully supported.
                 </p>
               </div>
 
@@ -606,30 +578,8 @@ export default function PredefinedMessagesManager({
                   </div>
                 </div>
 
-                {/* Upload or URL input */}
+                {/* Upload media file only */}
                 <div className="space-y-3 min-w-0">
-                  <div className="flex flex-col sm:flex-row gap-2 min-w-0">
-                    <div className="relative flex-1 min-w-0">
-                      <LinkIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Paste Google Drive / CDN link or media URL..."
-                        value={customMediaUrlInput}
-                        onChange={(e) => setCustomMediaUrlInput(e.target.value)}
-                        className="text-xs pl-9 h-9 bg-background min-w-0"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={handleAddMediaUrl}
-                      className="shrink-0 h-9"
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      Add URL
-                    </Button>
-                  </div>
-
                   <div className="flex flex-wrap items-center gap-3">
                     <label className="cursor-pointer inline-flex items-center justify-center rounded-lg text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3.5 transition-colors shadow-xs">
                       {uploading ? (
@@ -652,7 +602,7 @@ export default function PredefinedMessagesManager({
                   </div>
                 </div>
 
-                {/* Attached URLs list */}
+                {/* Attached files list */}
                 {(editingRule.media_urls || []).length > 0 && (
                   <div className="space-y-2 pt-2 border-t border-border/60 min-w-0">
                     <div className="flex items-center justify-between">
@@ -686,16 +636,13 @@ export default function PredefinedMessagesManager({
 
                               <div className="min-w-0 flex-1 space-y-0.5">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs font-semibold text-foreground truncate max-w-[280px]">
+                                  <span className="text-xs font-semibold text-foreground truncate max-w-[320px]">
                                     {meta.fileName}
                                   </span>
                                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 uppercase font-mono">
                                     #{i + 1} {meta.extension || meta.type}
                                   </Badge>
                                 </div>
-                                <p className="text-[11px] text-muted-foreground truncate font-mono select-all block max-w-full">
-                                  {url}
-                                </p>
                               </div>
                             </div>
 
@@ -705,32 +652,9 @@ export default function PredefinedMessagesManager({
                                   controls
                                   src={url}
                                   preload="none"
-                                  className="h-7 w-36 sm:w-44 rounded"
+                                  className="h-7 w-36 sm:w-48 rounded"
                                 />
                               )}
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                onClick={() => handleCopyUrl(url)}
-                                title="Copy direct link"
-                              >
-                                {copiedUrl === url ? (
-                                  <Check className="h-3.5 w-3.5 text-emerald-500" />
-                                ) : (
-                                  <Copy className="h-3.5 w-3.5" />
-                                )}
-                              </Button>
-                              <a
-                                href={url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                                title="Open link in new tab"
-                              >
-                                <ExternalLink className="h-3.5 w-3.5" />
-                              </a>
                               <Button
                                 type="button"
                                 variant="ghost"

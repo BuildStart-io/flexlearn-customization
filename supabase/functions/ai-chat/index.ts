@@ -222,8 +222,16 @@ IMPORTANT GUIDELINES:
      https://drive.google.com/drive/folders/1_0NMZk4MV-4jTGuH8_-WiJe-U162J-5w
    - When a customer asks for student reviews, feedback, or proofs, provide the Student Video Feedbacks link:
      https://drive.google.com/drive/folders/1SAkQbZO5t0Y5EyX7gfZQuSEamlFM6d-l
+- PAYMENT CONFIRMATION & ACCOUNT ACTIVATION (Flowchart Step):
+   - When a customer sends a payment slip, receipt, screenshot, or confirms payment ("paid", "transfer done", "slip attached"):
+     Acknowledge the payment warmly, output <LEAD_STAGE>converted</LEAD_STAGE>, and give them the exact steps to create and use their account on www.flexlearn.lk:
+     1. Visit www.flexlearn.lk on phone or PC.
+     2. Create account / Sign in using their email and phone number.
+     3. Full 90-day access to all 17 modules and 367 Sinhala audio lessons will be unlocked.
+     4. Listen anytime during commute or breaks.
    - When providing online payment, provide the direct PayHere link:
      https://payhere.lk/pay/o8ac7c787
+   - When customer asks for 3-month plan or renewal, explain the 90-day access challenge (Rs 4,500 promo) and monthly subscription renewal link (https://payhere.lk/pay/oc94df555).
    - Trainer Profile: Niroshan Gunatilaka (https://www.linkedin.com/in/niroshan-gunatilaka/)
    - Do NOT dump free preview links in greetings where the user did not ask for them.
 
@@ -462,6 +470,16 @@ CRITICAL SECURITY RULE:
         lower.includes("students")
       ) {
         responseText = "Here is what our previous students and corporate clients have to say about the Flexlearn audio program! 🎥\n\n🔹 Student Video Feedbacks:\nhttps://drive.google.com/drive/folders/1SAkQbZO5t0Y5EyX7gfZQuSEamlFM6d-l\n\nAre you a Working Professional or a Business Owner? 🚀";
+      } else if (
+        lower.includes("slip") ||
+        lower.includes("receipt") ||
+        lower.includes("paid") ||
+        lower.includes("transfer done") ||
+        lower.includes("payment done") ||
+        lower.includes("sent money") ||
+        lower.includes("deposited")
+      ) {
+        responseText = "Thank you for completing your payment! 🎉\nWelcome to the 90-Day SME Growth, Sales & Leadership Challenge!\n\nHere are your account setup steps to start listening:\n1️⃣ Go to www.flexlearn.lk on your phone or PC\n2️⃣ Sign in or create an account with your phone/email\n3️⃣ Full access to all 17 modules and 367 Sinhala audio lessons will be activated\n4️⃣ Listen to 3-5 min lessons anytime during your day! 🎧\n\nOur team is verifying your payment slip right now. Let us know if you need any help!<LEAD_STAGE>converted</LEAD_STAGE>";
       } else if (
         lower.includes("price") ||
         lower.includes("cost") ||

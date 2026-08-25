@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // 4. Renewal follow-up sequence for active students (e.g. Day 85 of 90-day access)
+      // 4. Renewal follow-up sequence for active students (7d, 3d, and 1d before 90-day expiry)
       const { data: renewalSetting } = await supabase
         .from("settings")
         .select("value")
@@ -149,59 +149,91 @@ Deno.serve(async (req) => {
         .eq("user_id", userId)
         .maybeSingle();
 
-      const renewalCfg = (renewalSetting?.value || {}) as { enabled?: boolean; text?: string; days?: number };
-      if (renewalCfg.enabled && renewalCfg.text?.trim()) {
-        const renewalDays = Number(renewalCfg.days) || 85;
-        const renewalCutoffStart = new Date(Date.now() - (renewalDays + 7) * 24 * 3600 * 1000).toISOString();
-        const renewalCutoffEnd = new Date(Date.now() - renewalDays * 24 * 3600 * 1000).toISOString();
+      const renewalCfg = (renewalSetting?.value || {}) as {
+        enabled?: boolean;
+        days_7_text?: string;
+        days_3_text?: string;
+        days_1_text?: string;
+        text?: string;
+      };
 
+      const renewalEnabled = renewalCfg.enabled ?? true; // enabled by default for student retention
+
+      if (renewalEnabled) {
+        // Fetch all paying orders for this business
         const { data: eligibleOrders } = await supabase
           .from("orders")
           .select("customer_phone, whatsapp_phone, created_at")
           .eq("user_id", userId)
-          .gte("created_at", renewalCutoffStart)
-          .lte("created_at", renewalCutoffEnd);
+          .in("status", ["paid", "delivered", "processing", "pending"]);
+
+        const nowMs = Date.now();
+        const DAY_MS = 24 * 3600 * 1000;
+
+        // Default templates matching the flowchart
+        const default7dText = renewalCfg.days_7_text?.trim() || renewalCfg.text?.trim() || 
+          `🎓 Flexlearn 90-Day Challenge Reminder:\nYour 90-day course access expires in 7 days! Renew now to retain access to all 17 modules, 367 bite-sized audio lessons, and upcoming course updates.\n\n💳 Pay online securely (Monthly Subscription or 90-Day Renewal):\nhttps://payhere.lk/pay/oc94df555\n\n🏦 Bank Transfer:\nSampath Bank - Rajagiriya Branch\nA/C: 112214017815 (Flexlearn Virtual College)`;
+
+        const default3dText = renewalCfg.days_3_text?.trim() || 
+          `⚠️ Flexlearn Access Alert (3 Days Left):\nOnly 3 days remaining on your 90-Day SME Growth, Sales & Leadership Challenge access. Don't lose your daily micro-learning momentum! 🚀\n\n💳 Quick Online Renewal:\nhttps://payhere.lk/pay/oc94df555\n\n🏦 Sampath Bank A/C: 112214017815\nSend your payment slip here for instant continuous access.`;
+
+        const default1dText = renewalCfg.days_1_text?.trim() || 
+          `⏳ FINAL NOTICE - Access Expires Tomorrow:\nYour Flexlearn student portal access will expire in 24 hours. Renew today to keep uninterrupted access to your audio lessons and resources!\n\n💳 Renew Now:\nhttps://payhere.lk/pay/oc94df555\n\n🏦 Sampath Bank A/C: 112214017815`;
+
+        const stages = [
+          { name: "7d", dayOffset: 83, type: "renewal_followup_7d", text: default7dText },
+          { name: "3d", dayOffset: 87, type: "renewal_followup_3d", text: default3dText },
+          { name: "1d", dayOffset: 89, type: "renewal_followup_1d", text: default1dText },
+        ];
 
         for (const ord of eligibleOrders || []) {
           const phone = ord.whatsapp_phone || ord.customer_phone;
           if (!phone) continue;
 
-          // Check if renewal reminder was already sent
-          const { data: priorRenewal } = await supabase
-            .from("conversations")
-            .select("id")
-            .eq("user_id", userId)
-            .eq("phone_number", phone)
-            .eq("direction", "outbound")
-            .contains("metadata", { type: "renewal_followup" })
-            .limit(1)
-            .maybeSingle();
+          const orderAgeDays = (nowMs - new Date(ord.created_at).getTime()) / DAY_MS;
 
-          if (priorRenewal) continue;
+          for (const stage of stages) {
+            // Check if order is at or past the milestone (within a 4-day active window)
+            if (orderAgeDays >= stage.dayOffset && orderAgeDays < stage.dayOffset + 4) {
+              // Check if this specific stage reminder was already sent
+              const { data: priorStage } = await supabase
+                .from("conversations")
+                .select("id")
+                .eq("user_id", userId)
+                .eq("phone_number", phone)
+                .eq("direction", "outbound")
+                .contains("metadata", { type: stage.type })
+                .limit(1)
+                .maybeSingle();
 
-          try {
-            const res = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${serviceKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ to: phone, message: renewalCfg.text.trim(), sessionApiKey }),
-            });
-            if (res.ok) {
-              await supabase.from("conversations").insert({
-                user_id: userId,
-                phone_number: phone,
-                message: renewalCfg.text.trim(),
-                direction: "outbound",
-                message_type: "text",
-                metadata: { type: "renewal_followup" },
-              });
-              summary.push({ userId, phone, type: "renewal_followup" });
-              console.log(`[send-followups] Renewal reminder sent to ${phone}`);
+              if (!priorStage) {
+                try {
+                  const res = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${serviceKey}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ to: phone, message: stage.text.trim(), sessionApiKey }),
+                  });
+
+                  if (res.ok) {
+                    await supabase.from("conversations").insert({
+                      user_id: userId,
+                      phone_number: phone,
+                      message: stage.text.trim(),
+                      direction: "outbound",
+                      message_type: "text",
+                      metadata: { type: stage.type, stage: stage.name, order_date: ord.created_at },
+                    });
+                    summary.push({ userId, phone, type: stage.type, stage: stage.name });
+                    console.log(`[send-followups] Renewal reminder (${stage.name}) sent to ${phone}`);
+                  }
+                } catch (stageErr) {
+                  console.error(`renewal ${stage.name} error`, phone, (stageErr as Error).message);
+                }
+              }
             }
-          } catch (renErr) {
-            console.error("renewal follow-up error", phone, (renErr as Error).message);
           }
         }
       }

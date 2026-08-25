@@ -91,6 +91,18 @@ export default function Settings() {
   const [inactivityFollowupMessage, setInactivityFollowupMessage] = useState("");
   const [inactivityFollowupHours, setInactivityFollowupHours] = useState<string>("24");
 
+  // Renewal Follow-up Reminders (7d, 3d, 1d before 90-day expiry)
+  const [renewalFollowupEnabled, setRenewalFollowupEnabled] = useState(true);
+  const [renewal7dMessage, setRenewal7dMessage] = useState(
+    "🎓 Flexlearn 90-Day Challenge Reminder:\nYour 90-day course access expires in 7 days! Renew now to retain access to all 17 modules, 367 bite-sized audio lessons, and upcoming course updates.\n\n💳 Pay online securely (Monthly Subscription or 90-Day Renewal):\nhttps://payhere.lk/pay/oc94df555\n\n🏦 Bank Transfer:\nSampath Bank - Rajagiriya Branch\nA/C: 112214017815 (Flexlearn Virtual College)"
+  );
+  const [renewal3dMessage, setRenewal3dMessage] = useState(
+    "⚠️ Flexlearn Access Alert (3 Days Left):\nOnly 3 days remaining on your 90-Day SME Growth, Sales & Leadership Challenge access. Don't lose your daily micro-learning momentum! 🚀\n\n💳 Quick Online Renewal:\nhttps://payhere.lk/pay/oc94df555\n\n🏦 Sampath Bank A/C: 112214017815\nSend your payment slip here for instant continuous access."
+  );
+  const [renewal1dMessage, setRenewal1dMessage] = useState(
+    "⏳ FINAL NOTICE - Access Expires Tomorrow:\nYour Flexlearn student portal access will expire in 24 hours. Renew today to keep uninterrupted access to your audio lessons and resources!\n\n💳 Renew Now:\nhttps://payhere.lk/pay/oc94df555\n\n🏦 Sampath Bank A/C: 112214017815"
+  );
+
   // Predefined Messages & Automated Triggers
   const [predefinedRules, setPredefinedRules] = useState<PredefinedRule[]>([]);
   const [savingPredefined, setSavingPredefined] = useState(false);
@@ -190,6 +202,14 @@ export default function Settings() {
             setInactivityFollowupMessage(iVal?.text || "");
             setInactivityFollowupEnabled(iVal?.enabled ?? false);
             setInactivityFollowupHours(String(iVal?.hours ?? 24));
+            break;
+          }
+          case "renewal_followup": {
+            const rVal = setting.value as any;
+            setRenewalFollowupEnabled(rVal?.enabled ?? true);
+            if (rVal?.days_7_text) setRenewal7dMessage(rVal.days_7_text);
+            if (rVal?.days_3_text) setRenewal3dMessage(rVal.days_3_text);
+            if (rVal?.days_1_text) setRenewal1dMessage(rVal.days_1_text);
             break;
           }
           case "predefined_messages": {
@@ -596,6 +616,15 @@ export default function Settings() {
       text: inactivityFollowupMessage,
       enabled: inactivityFollowupEnabled,
       hours,
+    });
+  };
+
+  const handleSaveRenewalFollowup = () => {
+    saveSettings("renewal_followup", {
+      enabled: renewalFollowupEnabled,
+      days_7_text: renewal7dMessage,
+      days_3_text: renewal3dMessage,
+      days_1_text: renewal1dMessage,
     });
   };
 
@@ -1124,6 +1153,85 @@ export default function Settings() {
                     </Button>
                   </>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* 3-Month Renewal Reminders & Retention (7d / 3d / 1d before expiry) */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="h-5 w-5" />
+                      3-Month Subscription Renewal Reminders
+                    </CardTitle>
+                    <CardDescription>
+                      Automatically dispatch multi-stage renewal reminders (7 days, 3 days, and 1 day before 90-day access expires)
+                    </CardDescription>
+                  </div>
+                  <Switch
+                    checked={renewalFollowupEnabled}
+                    onCheckedChange={setRenewalFollowupEnabled}
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="renewal-7d" className="text-sm font-semibold">
+                      1. Advance Reminder (7 Days Before Expiry — Day 83)
+                    </Label>
+                    <span className="text-xs text-muted-foreground">Sent 1 week before expiry</span>
+                  </div>
+                  <Textarea
+                    id="renewal-7d"
+                    value={renewal7dMessage}
+                    onChange={(e) => setRenewal7dMessage(e.target.value)}
+                    rows={3}
+                    disabled={!renewalFollowupEnabled}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="renewal-3d" className="text-sm font-semibold">
+                      2. Urgency Alert (3 Days Before Expiry — Day 87)
+                    </Label>
+                    <span className="text-xs text-muted-foreground">Sent 3 days before expiry</span>
+                  </div>
+                  <Textarea
+                    id="renewal-3d"
+                    value={renewal3dMessage}
+                    onChange={(e) => setRenewal3dMessage(e.target.value)}
+                    rows={3}
+                    disabled={!renewalFollowupEnabled}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="renewal-1d" className="text-sm font-semibold">
+                      3. Final 24-Hour Notice (1 Day Before Expiry — Day 89)
+                    </Label>
+                    <span className="text-xs text-muted-foreground">Sent 1 day before expiry</span>
+                  </div>
+                  <Textarea
+                    id="renewal-1d"
+                    value={renewal1dMessage}
+                    onChange={(e) => setRenewal1dMessage(e.target.value)}
+                    rows={3}
+                    disabled={!renewalFollowupEnabled}
+                  />
+                </div>
+
+                <Button onClick={handleSaveRenewalFollowup} disabled={saving}>
+                  {saving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Save Renewal Reminders
+                </Button>
               </CardContent>
             </Card>
 
