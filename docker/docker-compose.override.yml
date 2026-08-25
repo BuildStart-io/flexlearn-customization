@@ -31,7 +31,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_REGION: ${MINIO_REGION}
-      WEBHOOK_URL_OVERRIDE: ${WEBHOOK_URL_OVERRIDE:-https://stolen-opt-paso-garmin.trycloudflare.com/functions/v1/webhook-wsender}
+      WEBHOOK_URL_OVERRIDE: ${WEBHOOK_URL_OVERRIDE:-https://downtown-reader-metric-mailto.trycloudflare.com/functions/v1/webhook-wsender}
 
   storage:
     volumes:

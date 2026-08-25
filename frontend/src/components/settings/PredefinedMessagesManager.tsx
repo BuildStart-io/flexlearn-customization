@@ -17,7 +17,7 @@ import {
   Edit2,
   Volume2,
   Video,
-  Image,
+  Image as ImageIcon,
   FileText,
   Hash,
   Search,
@@ -26,6 +26,10 @@ import {
   Upload,
   Save,
   Eye,
+  Copy,
+  Check,
+  Link as LinkIcon,
+  Sparkles,
 } from "lucide-react";
 
 export interface PredefinedRule {
@@ -49,6 +53,50 @@ interface PredefinedMessagesManagerProps {
   saving?: boolean;
 }
 
+interface MediaMeta {
+  fileName: string;
+  isDrive: boolean;
+  type: "audio" | "video" | "image" | "document";
+  extension: string;
+}
+
+function parseMediaUrl(url: string, defaultType?: string): MediaMeta {
+  if (!url) {
+    return { fileName: "Media", isDrive: false, type: (defaultType as any) || "audio", extension: "" };
+  }
+
+  let fileName = "";
+  let isDrive = false;
+  try {
+    const urlObj = new URL(url);
+    if (urlObj.hostname.includes("drive.google.com")) {
+      isDrive = true;
+      fileName = "Google Drive Preview Link";
+    } else {
+      const parts = urlObj.pathname.split("/").filter(Boolean);
+      fileName = decodeURIComponent(parts[parts.length - 1] || "media-file");
+    }
+  } catch {
+    fileName = url.split("/").pop() || "media-file";
+  }
+
+  const extMatch = fileName.match(/\.([a-zA-Z0-9]+)$/);
+  const extension = extMatch ? extMatch[1].toLowerCase() : "";
+
+  let type: "audio" | "video" | "image" | "document" = (defaultType as any) || "audio";
+  if (["mp3", "wav", "ogg", "m4a", "aac", "opus", "weba"].includes(extension)) {
+    type = "audio";
+  } else if (["mp4", "webm", "mov", "mkv", "avi"].includes(extension)) {
+    type = "video";
+  } else if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(extension)) {
+    type = "image";
+  } else if (["pdf", "doc", "docx", "xls", "xlsx", "txt"].includes(extension) || isDrive) {
+    type = "document";
+  }
+
+  return { fileName, isDrive, type, extension };
+}
+
 export default function PredefinedMessagesManager({
   rules,
   onChange,
@@ -63,6 +111,7 @@ export default function PredefinedMessagesManager({
   const [customMediaUrlInput, setCustomMediaUrlInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [previewRule, setPreviewRule] = useState<PredefinedRule | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   const handleOpenAdd = () => {
     setEditingRule({
@@ -183,14 +232,21 @@ export default function PredefinedMessagesManager({
     });
   };
 
+  const handleCopyUrl = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(url);
+    toast({ title: "Link copied to clipboard" });
+    setTimeout(() => setCopiedUrl(null), 2000);
+  };
+
   const getMediaIcon = (type?: string) => {
     switch (type) {
       case "video":
         return <Video className="h-4 w-4 text-purple-500" />;
       case "image":
-        return <Image className="h-4 w-4 text-blue-500" />;
+        return <ImageIcon className="h-4 w-4 text-blue-500" />;
       case "document":
-        return <FileText className="h-4 w-4 text-orange-500" />;
+        return <FileText className="h-4 w-4 text-amber-500" />;
       case "audio":
       default:
         return <Volume2 className="h-4 w-4 text-emerald-500" />;
@@ -198,34 +254,34 @@ export default function PredefinedMessagesManager({
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
+    <div className="space-y-6 w-full min-w-0">
+      <Card className="w-full min-w-0 overflow-hidden border-border shadow-sm">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+            <div className="min-w-0 flex-1">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <MessageSquare className="h-5 w-5 text-primary shrink-0" />
                 Predefined Automated Messages & Media
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs sm:text-sm mt-1">
                 Configure automated responses sent at specific conversation milestones (message count) or when customers ask for previews, demos, and testimonials.
               </CardDescription>
             </div>
             <div className="flex items-center justify-end gap-2 shrink-0">
-              <Button variant="outline" size="sm" onClick={handleOpenAdd}>
-                <Plus className="mr-2 h-4 w-4" />
+              <Button variant="default" size="sm" onClick={handleOpenAdd} className="shadow-xs">
+                <Plus className="mr-1.5 h-4 w-4" />
                 Add Predefined Rule
               </Button>
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-6 min-w-0">
           {/* Rules List */}
           {rules.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed rounded-lg border-muted p-8">
+            <div className="text-center py-12 border-2 border-dashed rounded-xl border-muted p-8">
               <MessageSquare className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
-              <h3 className="font-medium text-base mb-1">No Predefined Messages Configured</h3>
+              <h3 className="font-medium text-base mb-1 text-foreground">No Predefined Messages Configured</h3>
               <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
                 Add automated messages to deliver sample audios, videos, and follow-ups after specific message milestones.
               </p>
@@ -235,25 +291,26 @@ export default function PredefinedMessagesManager({
               </Button>
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid gap-4 w-full min-w-0">
               {rules.map((rule) => {
                 const mediaCount = (rule.media_urls || []).length;
                 return (
                   <div
                     key={rule.id}
-                    className={`border rounded-lg p-4 transition-all duration-200 ${
+                    className={`border rounded-xl p-4 sm:p-5 transition-all duration-200 w-full min-w-0 ${
                       rule.enabled
-                        ? "bg-card border-border shadow-sm hover:border-border"
+                        ? "bg-card border-border shadow-xs hover:shadow-md hover:border-primary/30"
                         : "bg-muted/30 border-dashed border-border opacity-70"
                     }`}
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                      <div className="space-y-1.5 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h4 className="font-semibold text-sm text-foreground">{rule.name}</h4>
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 min-w-0">
+                      <div className="space-y-2.5 flex-1 min-w-0">
+                        {/* Title & Badges */}
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
+                          <h4 className="font-semibold text-sm sm:text-base text-foreground break-words">{rule.name}</h4>
                           <Badge
                             variant={rule.trigger_type === "message_count" ? "secondary" : "outline"}
-                            className="text-xs gap-1 py-0.5"
+                            className="text-xs gap-1.5 py-0.5"
                           >
                             {rule.trigger_type === "message_count" ? (
                               <>
@@ -263,65 +320,74 @@ export default function PredefinedMessagesManager({
                             ) : (
                               <>
                                 <Search className="h-3 w-3" />
-                                Intent Keywords ({rule.keywords?.length || 0})
+                                Keywords ({rule.keywords?.length || 0})
                               </>
                             )}
                           </Badge>
 
                           {rule.media_type && (
-                            <Badge variant="outline" className="text-xs gap-1 py-0.5 capitalize">
+                            <Badge variant="outline" className="text-xs gap-1.5 py-0.5 capitalize">
                               {getMediaIcon(rule.media_type)}
                               {rule.media_type} {mediaCount > 0 && `(${mediaCount})`}
                             </Badge>
                           )}
 
                           {rule.once_per_contact && (
-                            <Badge variant="outline" className="text-[10px] py-0 border-amber-500/40 text-amber-600 dark:text-amber-400">
+                            <Badge variant="outline" className="text-[10px] py-0.5 border-amber-500/40 text-amber-600 dark:text-amber-400">
                               Once Per Contact
                             </Badge>
                           )}
                         </div>
 
+                        {/* Keywords triggers */}
                         {rule.trigger_type !== "message_count" && rule.keywords && rule.keywords.length > 0 && (
-                          <div className="flex flex-wrap gap-1 items-center pt-0.5">
-                            <span className="text-[11px] text-muted-foreground font-medium">Triggers on:</span>
-                            {rule.keywords.slice(0, 5).map((kw) => (
+                          <div className="flex flex-wrap gap-1.5 items-center pt-0.5 min-w-0">
+                            <span className="text-[11px] text-muted-foreground font-medium shrink-0">Triggers on:</span>
+                            {rule.keywords.map((kw) => (
                               <span
                                 key={kw}
-                                className="text-[11px] bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground"
+                                className="text-[11px] bg-muted/80 px-2 py-0.5 rounded-md font-mono text-muted-foreground break-all"
                               >
                                 {kw}
                               </span>
                             ))}
-                            {rule.keywords.length > 5 && (
-                              <span className="text-[11px] text-muted-foreground">+{rule.keywords.length - 5} more</span>
-                            )}
                           </div>
                         )}
 
-                        <p className="text-xs text-muted-foreground line-clamp-2 pt-1 whitespace-pre-wrap font-sans">
-                          {rule.message || "(No text message configured)"}
-                        </p>
+                        {/* Message preview snippet */}
+                        <div className="text-xs sm:text-sm text-foreground/90 bg-muted/30 p-3 rounded-lg border border-border/50 font-sans whitespace-pre-wrap break-words line-clamp-3">
+                          {rule.message || <span className="text-muted-foreground italic">(No text message configured)</span>}
+                        </div>
 
+                        {/* Attached Media Chips */}
                         {mediaCount > 0 && (
-                          <div className="flex flex-wrap gap-2 pt-1">
-                            {rule.media_urls?.map((url, idx) => (
-                              <a
-                                key={idx}
-                                href={url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[11px] text-primary flex items-center gap-1 hover:underline max-w-[260px] truncate"
-                              >
-                                <ExternalLink className="h-3 w-3 shrink-0" />
-                                <span className="truncate">{url}</span>
-                              </a>
-                            ))}
+                          <div className="space-y-1.5 pt-1 min-w-0">
+                            <span className="text-[11px] font-medium text-muted-foreground">Attachments ({mediaCount}):</span>
+                            <div className="flex flex-wrap gap-2 min-w-0">
+                              {rule.media_urls?.map((url, idx) => {
+                                const meta = parseMediaUrl(url, rule.media_type);
+                                return (
+                                  <a
+                                    key={idx}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 text-[11px] bg-background border border-border/80 hover:border-primary/40 hover:bg-accent/50 px-2.5 py-1 rounded-md transition-all group max-w-full truncate"
+                                    title={url}
+                                  >
+                                    <span className="shrink-0">{getMediaIcon(meta.type)}</span>
+                                    <span className="font-medium text-foreground truncate max-w-[200px]">{meta.fileName}</span>
+                                    <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary shrink-0 opacity-70" />
+                                  </a>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 sm:self-center shrink-0 pt-2 sm:pt-0">
+                      {/* Actions Toolbar */}
+                      <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 sm:self-center">
                         <div className="flex items-center gap-2 mr-2">
                           <Switch
                             checked={rule.enabled}
@@ -337,7 +403,7 @@ export default function PredefinedMessagesManager({
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-foreground"
                           onClick={() => setPreviewRule(rule)}
-                          title="Preview message"
+                          title="Preview WhatsApp message"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -371,7 +437,7 @@ export default function PredefinedMessagesManager({
 
           {rules.length > 0 && (
             <div className="flex justify-end pt-2">
-              <Button onClick={onSave} disabled={saving}>
+              <Button onClick={onSave} disabled={saving} className="shadow-sm">
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save Changes
               </Button>
@@ -382,54 +448,63 @@ export default function PredefinedMessagesManager({
 
       {/* Edit / Create Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              {editingRule?.id.startsWith("rule-") && rules.some((r) => r.id === editingRule.id)
-                ? "Edit Predefined Rule"
-                : "Create Predefined Rule"}
-            </DialogTitle>
-            <DialogDescription>
-              Set up the trigger conditions and the response message with optional media attachments.
-            </DialogDescription>
+        <DialogContent className="w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-border shadow-2xl">
+          <DialogHeader className="px-6 py-5 border-b border-border/80 bg-muted/10 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <MessageSquare className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg font-semibold text-foreground">
+                  {editingRule?.id.startsWith("rule-") && rules.some((r) => r.id === editingRule.id)
+                    ? "Edit Predefined Rule"
+                    : "Create Predefined Rule"}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Set up trigger conditions, automated response copy, and multimedia attachments.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
           {editingRule && (
-            <div className="space-y-4 py-2">
+            <div className="overflow-y-auto px-6 py-5 space-y-5 flex-1 min-w-0">
               {/* Name */}
-              <div className="space-y-1.5">
-                <Label htmlFor="rule-name">Rule Name</Label>
+              <div className="space-y-1.5 min-w-0">
+                <Label htmlFor="rule-name" className="text-xs font-semibold text-foreground">
+                  Rule Name <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="rule-name"
                   placeholder="e.g., Free Preview Sample Audios"
                   value={editingRule.name}
                   onChange={(e) => setEditingRule({ ...editingRule, name: e.target.value })}
+                  className="font-medium"
                 />
               </div>
 
               {/* Trigger Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Trigger Condition</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
+                <div className="space-y-1.5 min-w-0">
+                  <Label className="text-xs font-semibold text-foreground">Trigger Condition</Label>
                   <Select
                     value={editingRule.trigger_type}
                     onValueChange={(val: any) => setEditingRule({ ...editingRule, trigger_type: val })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select trigger type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="message_count">
                         <div className="flex items-center gap-2">
-                          <Hash className="h-4 w-4" />
-                          Message Count Milestone
+                          <Hash className="h-4 w-4 text-muted-foreground" />
+                          <span>Message Count Milestone</span>
                         </div>
                       </SelectItem>
                       <SelectItem value="intent">
                         <div className="flex items-center gap-2">
-                          <Search className="h-4 w-4" />
-                          Keywords / Intent Match
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                          <span>Keywords / Intent Match</span>
                         </div>
                       </SelectItem>
                     </SelectContent>
@@ -437,8 +512,10 @@ export default function PredefinedMessagesManager({
                 </div>
 
                 {editingRule.trigger_type === "message_count" ? (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="trigger-count">Inbound Message Number</Label>
+                  <div className="space-y-1.5 min-w-0">
+                    <Label htmlFor="trigger-count" className="text-xs font-semibold text-foreground">
+                      Inbound Message Number
+                    </Label>
                     <Input
                       id="trigger-count"
                       type="number"
@@ -453,12 +530,14 @@ export default function PredefinedMessagesManager({
                       placeholder="e.g. 3"
                     />
                     <p className="text-[11px] text-muted-foreground">
-                      Triggers on customer message #{triggerCountInput || "1"}
+                      Triggers on student message #{triggerCountInput || "1"}
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="keywords">Matching Keywords (comma-separated)</Label>
+                  <div className="space-y-1.5 min-w-0">
+                    <Label htmlFor="keywords" className="text-xs font-semibold text-foreground">
+                      Matching Keywords (comma-separated)
+                    </Label>
                     <Input
                       id="keywords"
                       placeholder="sample, demo, preview, free audio"
@@ -466,71 +545,97 @@ export default function PredefinedMessagesManager({
                       onChange={(e) => setKeywordInput(e.target.value)}
                     />
                     <p className="text-[11px] text-muted-foreground">
-                      Triggers if the message contains any of these words
+                      Triggers if student's message contains any of these words
                     </p>
                   </div>
                 )}
               </div>
 
               {/* Message Text */}
-              <div className="space-y-1.5">
-                <Label htmlFor="rule-message">Predefined WhatsApp Message</Label>
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="rule-message" className="text-xs font-semibold text-foreground">
+                    Predefined WhatsApp Message
+                  </Label>
+                  <span className="text-[11px] text-muted-foreground">
+                    {editingRule.message?.length || 0} characters
+                  </span>
+                </div>
                 <Textarea
                   id="rule-message"
                   rows={5}
                   placeholder="Write the message that will be sent to the customer..."
                   value={editingRule.message}
                   onChange={(e) => setEditingRule({ ...editingRule, message: e.target.value })}
-                  className="font-sans text-sm"
+                  className="font-sans text-sm resize-y min-h-[110px]"
                 />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <Sparkles className="h-3 w-3 text-primary shrink-0" />
                   Emojis and links (Google Drive, PayHere) are fully supported.
                 </p>
               </div>
 
               {/* Media Section */}
-              <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm font-semibold">Media Attachment (Optional)</Label>
+              <div className="border rounded-xl p-4 sm:p-5 bg-muted/20 space-y-4 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      Media Attachment (Optional)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Attach audio recordings, preview videos, images, or documents.
+                    </p>
                   </div>
-                  <Select
-                    value={editingRule.media_type || "audio"}
-                    onValueChange={(val: any) => setEditingRule({ ...editingRule, media_type: val })}
-                  >
-                    <SelectTrigger className="w-[140px] h-8 text-xs">
-                      <SelectValue placeholder="Media Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="audio">🎵 Audio File</SelectItem>
-                      <SelectItem value="video">🎥 Video</SelectItem>
-                      <SelectItem value="image">🖼️ Image</SelectItem>
-                      <SelectItem value="document">📄 Document / PDF</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-muted-foreground">Type:</span>
+                    <Select
+                      value={editingRule.media_type || "audio"}
+                      onValueChange={(val: any) => setEditingRule({ ...editingRule, media_type: val })}
+                    >
+                      <SelectTrigger className="w-[145px] h-8 text-xs bg-background">
+                        <SelectValue placeholder="Media Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="audio">🎵 Audio File</SelectItem>
+                        <SelectItem value="video">🎥 Video</SelectItem>
+                        <SelectItem value="image">🖼️ Image</SelectItem>
+                        <SelectItem value="document">📄 Document / PDF</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 {/* Upload or URL input */}
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Paste Google Drive / CDN link or media URL..."
-                      value={customMediaUrlInput}
-                      onChange={(e) => setCustomMediaUrlInput(e.target.value)}
-                      className="text-xs h-9"
-                    />
-                    <Button type="button" size="sm" variant="secondary" onClick={handleAddMediaUrl} className="shrink-0 h-9">
+                <div className="space-y-3 min-w-0">
+                  <div className="flex flex-col sm:flex-row gap-2 min-w-0">
+                    <div className="relative flex-1 min-w-0">
+                      <LinkIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Paste Google Drive / CDN link or media URL..."
+                        value={customMediaUrlInput}
+                        onChange={(e) => setCustomMediaUrlInput(e.target.value)}
+                        className="text-xs pl-9 h-9 bg-background min-w-0"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={handleAddMediaUrl}
+                      className="shrink-0 h-9"
+                    >
                       <Plus className="h-3.5 w-3.5 mr-1" />
                       Add URL
                     </Button>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <label className="cursor-pointer inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 transition-colors">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="cursor-pointer inline-flex items-center justify-center rounded-lg text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3.5 transition-colors shadow-xs">
                       {uploading ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5 text-primary" />
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-2 text-primary" />
                       ) : (
-                        <Upload className="h-3.5 w-3.5 mr-1.5" />
+                        <Upload className="h-3.5 w-3.5 mr-2 text-primary" />
                       )}
                       Upload Media File
                       <input
@@ -541,72 +646,152 @@ export default function PredefinedMessagesManager({
                         className="hidden"
                       />
                     </label>
-                    <span className="text-[11px] text-muted-foreground">Supports MP3, MP4, PNG, JPG, PDF up to 50MB</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Supports MP3, WAV, MP4, PNG, JPG, PDF up to 50MB
+                    </span>
                   </div>
                 </div>
 
                 {/* Attached URLs list */}
                 {(editingRule.media_urls || []).length > 0 && (
-                  <div className="space-y-1.5 pt-2">
-                    <span className="text-xs font-medium text-muted-foreground">Attached Media:</span>
-                    <div className="space-y-1.5">
-                      {editingRule.media_urls?.map((url, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between gap-2 p-2 rounded-md bg-background border text-xs"
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            {getMediaIcon(editingRule.media_type)}
-                            <span className="truncate font-mono text-[11px]">{url}</span>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-destructive hover:bg-destructive/10"
-                            onClick={() => handleRemoveMediaUrl(url)}
+                  <div className="space-y-2 pt-2 border-t border-border/60 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-muted-foreground">
+                        Attached Files ({editingRule.media_urls?.length}):
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 min-w-0">
+                      {editingRule.media_urls?.map((url, i) => {
+                        const meta = parseMediaUrl(url, editingRule.media_type);
+                        return (
+                          <div
+                            key={i}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-background border border-border/80 shadow-xs hover:border-primary/40 transition-all min-w-0"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ))}
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div
+                                className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${
+                                  meta.type === "audio"
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                    : meta.type === "video"
+                                    ? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                                    : meta.type === "image"
+                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                }`}
+                              >
+                                {getMediaIcon(meta.type)}
+                              </div>
+
+                              <div className="min-w-0 flex-1 space-y-0.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs font-semibold text-foreground truncate max-w-[280px]">
+                                    {meta.fileName}
+                                  </span>
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 uppercase font-mono">
+                                    #{i + 1} {meta.extension || meta.type}
+                                  </Badge>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground truncate font-mono select-all block max-w-full">
+                                  {url}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                              {meta.type === "audio" && (
+                                <audio
+                                  controls
+                                  src={url}
+                                  preload="none"
+                                  className="h-7 w-36 sm:w-44 rounded"
+                                />
+                              )}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                onClick={() => handleCopyUrl(url)}
+                                title="Copy direct link"
+                              >
+                                {copiedUrl === url ? (
+                                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                                ) : (
+                                  <Copy className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                                title="Open link in new tab"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                onClick={() => handleRemoveMediaUrl(url)}
+                                title="Remove attachment"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Toggles */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-2 border-t">
-                <div className="flex items-center justify-between sm:justify-start gap-3 flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t min-w-0">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border/60">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="rule-enabled" className="text-xs font-semibold cursor-pointer">
+                      Rule Status
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Enable or disable automated dispatch
+                    </p>
+                  </div>
                   <Switch
                     id="rule-enabled"
                     checked={editingRule.enabled}
                     onCheckedChange={(checked) => setEditingRule({ ...editingRule, enabled: checked })}
                   />
-                  <Label htmlFor="rule-enabled" className="text-xs cursor-pointer">
-                    Enable this rule
-                  </Label>
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-start gap-3 flex-1">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border/60">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="once-per-contact" className="text-xs font-semibold cursor-pointer">
+                      Once Per Contact
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Send only once per student phone number
+                    </p>
+                  </div>
                   <Switch
                     id="once-per-contact"
                     checked={editingRule.once_per_contact || false}
                     onCheckedChange={(checked) => setEditingRule({ ...editingRule, once_per_contact: checked })}
                   />
-                  <Label htmlFor="once-per-contact" className="text-xs cursor-pointer">
-                    Send only once per student
-                  </Label>
                 </div>
               </div>
             </div>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+          <DialogFooter className="px-6 py-4 border-t border-border/80 bg-muted/10 shrink-0 flex items-center justify-between sm:justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveModal}>
+            <Button size="sm" onClick={handleSaveModal}>
               Save Rule
             </Button>
           </DialogFooter>
@@ -616,27 +801,39 @@ export default function PredefinedMessagesManager({
       {/* WhatsApp Message Preview Modal */}
       <Dialog open={!!previewRule} onOpenChange={(open) => !open && setPreviewRule(null)}>
         <DialogContent className="max-w-md p-0 overflow-hidden bg-[#0b141a] border-[#222e35] text-white">
-          <div className="bg-[#202c33] p-3 flex items-center gap-3 border-b border-[#222e35]">
-            <div className="h-9 w-9 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white text-sm">
+          <div className="bg-[#202c33] p-3.5 flex items-center gap-3 border-b border-[#222e35]">
+            <div className="h-9 w-9 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white text-sm shrink-0">
               FL
             </div>
-            <div>
-              <div className="font-semibold text-sm text-[#e9edef]">Flexlearn Support Bot</div>
-              <div className="text-[11px] text-[#8696a0]">
-                Preview: {previewRule?.name}
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold text-sm text-[#e9edef] truncate">Flexlearn Support Bot</div>
+              <div className="text-[11px] text-[#8696a0] truncate">
+                Rule: {previewRule?.name}
               </div>
             </div>
           </div>
 
-          <div className="p-4 bg-[url('https://static.whatsapp.net/rsrc.php/v3/y6/r/wa669ae9z2j.png')] bg-repeat min-h-[220px] flex flex-col justify-end">
-            <div className="bg-[#005c4b] text-[#e9edef] rounded-lg p-3 max-w-[90%] self-start shadow-md space-y-2 text-sm leading-relaxed">
+          <div className="p-4 bg-[url('https://static.whatsapp.net/rsrc.php/v3/y6/r/wa669ae9z2j.png')] bg-repeat min-h-[240px] max-h-[60vh] overflow-y-auto flex flex-col justify-end">
+            <div className="bg-[#005c4b] text-[#e9edef] rounded-lg p-3 max-w-[92%] self-start shadow-md space-y-2 text-sm leading-relaxed min-w-0">
               {previewRule?.media_urls && previewRule.media_urls.length > 0 && (
-                <div className="bg-[#025142] p-2 rounded flex items-center gap-2 text-xs border border-[#007a65]">
-                  {getMediaIcon(previewRule.media_type)}
-                  <span className="truncate font-mono text-[11px]">{previewRule.media_urls[0]}</span>
+                <div className="space-y-1.5 min-w-0">
+                  {previewRule.media_urls.map((url, i) => {
+                    const meta = parseMediaUrl(url, previewRule.media_type);
+                    return (
+                      <div key={i} className="bg-[#025142] p-2 rounded flex flex-col gap-1.5 text-xs border border-[#007a65] min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="shrink-0">{getMediaIcon(meta.type)}</span>
+                          <span className="truncate font-mono text-[11px] flex-1">{meta.fileName}</span>
+                        </div>
+                        {meta.type === "audio" && (
+                          <audio controls src={url} preload="none" className="h-6 w-full rounded" />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
-              <div className="whitespace-pre-wrap">{previewRule?.message}</div>
+              <div className="whitespace-pre-wrap break-words font-sans text-[13px]">{previewRule?.message}</div>
               <div className="text-[10px] text-[#8696a0] text-right pt-1">10:30 AM ✓✓</div>
             </div>
           </div>
