@@ -23,7 +23,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const ALLOWED_FOLDERS = ["products", "videos", "welcome", "faq"];
+const ALLOWED_FOLDERS = ["products", "videos", "welcome", "faq", "predefined"];
 const MAX_BYTES = 50 * 1024 * 1024;
 
 /** FAQ attachments live in their own dedicated bucket, separate from product/welcome media. */

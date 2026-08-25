@@ -11,9 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, MessageSquare, CreditCard, Copy, Check, Smartphone, RefreshCw, Wifi, WifiOff, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, Clock, Lock } from "lucide-react";
+import { Loader2, Save, MessageSquare, CreditCard, Copy, Check, Smartphone, RefreshCw, Wifi, WifiOff, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, Clock, Lock, MessageSquareCode } from "lucide-react";
 import WelcomeMediaUpload from "@/components/settings/WelcomeMediaUpload";
 import StaffManager from "@/components/settings/StaffManager";
+import PredefinedMessagesManager, { PredefinedRule } from "@/components/settings/PredefinedMessagesManager";
 import { useStaffAccess } from "@/hooks/useStaffAccess";
 import { useEffectivePlan } from "@/hooks/useEffectivePlan";
 
@@ -89,6 +90,10 @@ export default function Settings() {
   const [inactivityFollowupEnabled, setInactivityFollowupEnabled] = useState(false);
   const [inactivityFollowupMessage, setInactivityFollowupMessage] = useState("");
   const [inactivityFollowupHours, setInactivityFollowupHours] = useState<string>("24");
+
+  // Predefined Messages & Automated Triggers
+  const [predefinedRules, setPredefinedRules] = useState<PredefinedRule[]>([]);
+  const [savingPredefined, setSavingPredefined] = useState(false);
 
   // WhatsApp Connection
   const [sessions, setSessions] = useState<WsenderSession[]>([]);
@@ -185,6 +190,14 @@ export default function Settings() {
             setInactivityFollowupMessage(iVal?.text || "");
             setInactivityFollowupEnabled(iVal?.enabled ?? false);
             setInactivityFollowupHours(String(iVal?.hours ?? 24));
+            break;
+          }
+          case "predefined_messages": {
+            const pVal = setting.value as any;
+            const loadedRules = Array.isArray(pVal)
+              ? pVal
+              : (Array.isArray(pVal?.rules) ? pVal.rules : []);
+            setPredefinedRules(loadedRules);
             break;
           }
         }
@@ -548,6 +561,15 @@ export default function Settings() {
     });
   };
 
+  const handleSavePredefined = async () => {
+    setSavingPredefined(true);
+    try {
+      await saveSettings("predefined_messages", predefinedRules);
+    } finally {
+      setSavingPredefined(false);
+    }
+  };
+
   const handleSaveAutoResponses = () => {
     saveSettings("auto_responses", { enabled: autoResponsesEnabled });
   };
@@ -623,6 +645,7 @@ export default function Settings() {
           <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="whatsapp" className="flex-1 sm:flex-initial">WhatsApp</TabsTrigger>
             <TabsTrigger value="chatbot" className="flex-1 sm:flex-initial">Chatbot</TabsTrigger>
+            <TabsTrigger value="predefined" className="flex-1 sm:flex-initial">Predefined</TabsTrigger>
             <TabsTrigger value="payment" className="flex-1 sm:flex-initial">Payment</TabsTrigger>
             <TabsTrigger value="delivery" className="flex-1 sm:flex-initial">Delivery</TabsTrigger>
             <TabsTrigger value="staff" className="flex-1 sm:flex-initial">Staff</TabsTrigger>
@@ -1171,6 +1194,16 @@ export default function Settings() {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Predefined Messages Tab */}
+          <TabsContent value="predefined" className="space-y-6">
+            <PredefinedMessagesManager
+              rules={predefinedRules}
+              onChange={setPredefinedRules}
+              onSave={handleSavePredefined}
+              saving={savingPredefined}
+            />
           </TabsContent>
 
           <TabsContent value="payment" className="space-y-6">

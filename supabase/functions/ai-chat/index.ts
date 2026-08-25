@@ -210,10 +210,27 @@ IMPORTANT GUIDELINES:
     Name: Jane Doe
   - For order summaries, use emojis to mark each section (📦 Items, 💰 Total, 🚚 Delivery, 💳 Payment)
 - If a customer wants to order, guide them through collecting: name, phone, product selection with variations, quantity, and payment method.
+- CUSTOMER QUALIFICATION & SALES PITCH:
+   - First identify whether the customer is a Working Professional or a Business Owner before pitching.
+   - When asking for their role, ask specifically: "Are you a Working Professional or a Business Owner?" (Do NOT use the word 'entrepreneur').
+   - If the customer identifies as a Working Professional: Output <CUSTOMER_TYPE>professional</CUSTOMER_TYPE> at the end, and tailor the pitch around career growth, promotions, workplace communication, managing up, and practical 3-5 min Sinhala audio lessons during commutes/breaks.
+   - If the customer identifies as a Business Owner: Output <CUSTOMER_TYPE>business_owner</CUSTOMER_TYPE> at the end, and tailor the pitch around team leadership, managing remote staff, sales mastery & tele-sales, talent acquisition, and scaling their business with practical Sri Lankan workplace strategies.
+   - In initial greetings (e.g. "Hi", "Hello"), do NOT include the free sample links. Only ask whether they are a Working Professional or a Business Owner.
+
+- FREE SAMPLES, TESTIMONIALS & LINKS:
+   - When a customer asks for free samples, preview audios, or a demo, provide the Free Preview (5 sample episodes) link:
+     https://drive.google.com/drive/folders/1_0NMZk4MV-4jTGuH8_-WiJe-U162J-5w
+   - When a customer asks for student reviews, feedback, or proofs, provide the Student Video Feedbacks link:
+     https://drive.google.com/drive/folders/1SAkQbZO5t0Y5EyX7gfZQuSEamlFM6d-l
+   - When providing online payment, provide the direct PayHere link:
+     https://payhere.lk/pay/o8ac7c787
+   - Trainer Profile: Niroshan Gunatilaka (https://www.linkedin.com/in/niroshan-gunatilaka/)
+   - Do NOT dump free preview links in greetings where the user did not ask for them.
+
 - DIGITAL vs PHYSICAL PRODUCTS:
    - For PHYSICAL products: Also collect the customer's district/city and full shipping address. Offer both Cash on Delivery (COD) and Bank Transfer as payment options. If a delivery fee is listed for the product, ADD it to the total and show it as a separate line item in the order summary.
 ${freeDeliveryThreshold > 0 ? `   - FREE DELIVERY THRESHOLD: If the order subtotal (before delivery fee) for physical products is LKR ${freeDeliveryThreshold} or more, waive the delivery fee entirely and inform the customer they qualify for free delivery. If below this threshold, apply the normal delivery fee.` : ""}
-  - For DIGITAL products: Do NOT ask for a shipping address. Do NOT offer Cash on Delivery. The ONLY payment method for digital products is Bank Transfer. No delivery fee applies. You MUST collect the customer's email address for digital product delivery.
+  - For DIGITAL products: Do NOT ask for a shipping address. Do NOT offer Cash on Delivery. The ONLY payment method for digital products is Bank Transfer or Online Card Payment (PayHere). No delivery fee applies. You MUST collect the customer's email address for digital product delivery.
 - Sub-variants marked as REQUIRED must be selected by the customer before confirming an order. Always ask for required sub-variants if the customer hasn't specified them.
 - For payment, provide ALL configured payment account details to the customer. List every account with emoji separators:
 ${(() => {
@@ -225,7 +242,7 @@ ${(() => {
       const number = a.account_number || "Not configured";
       const name = a.account_name || "Not configured";
       if (type === "crypto") return `  ${i + 1}. Crypto/Wallet: ${label}, Address/ID: ${number}, Name: ${name}`;
-      if (type === "digital") return `  ${i + 1}. Digital Wallet: ${label}, Account: ${number}, Name: ${name}`;
+      if (type === "digital") return `  ${i + 1}. Online/Card Payment: ${label}, Link: ${number}, Name: ${name}`;
       return `  ${i + 1}. Bank: ${label}, Account: ${number}, Name: ${name}`;
     }).join("\n");
   }
@@ -265,7 +282,7 @@ Include this JSON block at the END of your confirmation message. The customer wo
 
 CRITICAL SECURITY RULE:
 - NEVER show raw JSON, code, data structures, or technical markup to the customer under ANY circumstances.
-- The ORDER_JSON, IMAGE_URL, VIDEO_URL, and USED_FAQS tags are INVISIBLE system instructions. They must ONLY appear ONCE at the very END of your message, after all human-readable text.
+- The ORDER_JSON, IMAGE_URL, VIDEO_URL, CUSTOMER_TYPE, LEAD_STAGE, and USED_FAQS tags are INVISIBLE system instructions. They must ONLY appear ONCE at the very END of your message, after all human-readable text.
 - NEVER write ORDER_JSON, IMAGE_URL, VIDEO_URL, or USED_FAQS in the middle of your reply.
 - NEVER output a JSON object as part of your conversational reply.
 - If a customer sends a photo or image (e.g. payment slip, receipt, screenshot), acknowledge it politely. Say something like "Thank you, I noted your payment" or ask them to confirm what the image is about. Do NOT attempt to describe or analyze the image.
@@ -304,56 +321,163 @@ CRITICAL SECURITY RULE:
     // ------------------------------------------------------------------
     const aiGenerateUrl = Deno.env.get("AI_GENERATE_URL");
     const botApiKey = Deno.env.get("BOT_API_KEY");
-    const MODEL = "google/gemini-3-flash-preview";
+    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY") && !Deno.env.get("OPENAI_API_KEY")?.includes("xxxx") ? Deno.env.get("OPENAI_API_KEY") : null;
+    const groqApiKey = Deno.env.get("GROQ_API_KEY");
+    const openrouterApiKey = Deno.env.get("OPENROUTER_API_KEY");
+
+    const MODEL = "google/gemini-2.5-flash";
     const MAX_TOKENS = 500;
 
-    let aiResponse: Response;
-    if (aiGenerateUrl && botApiKey) {
-      aiResponse = await fetch(aiGenerateUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-bot-key": botApiKey },
-        body: JSON.stringify({
-          messages,
-          model: MODEL,
-          maxTokens: MAX_TOKENS,
-        }),
-      });
-    } else {
-      aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${lovableApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ model: MODEL, messages, max_tokens: MAX_TOKENS }),
-      });
+    let responseText = "";
+
+    // 1. Direct Gemini API
+    if (geminiApiKey) {
+      try {
+        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: messages.map(m => ({
+              role: m.role === "assistant" ? "model" : "user",
+              parts: [{ text: m.content }]
+            })),
+            generationConfig: { maxOutputTokens: MAX_TOKENS }
+          })
+        });
+        if (geminiRes.ok) {
+          const gData = await geminiRes.json();
+          responseText = gData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        }
+      } catch (gErr) {
+        console.warn("Direct Gemini call failed:", gErr);
+      }
     }
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    // 2. Direct OpenAI / Groq / OpenRouter API
+    if (!responseText && (openaiApiKey || groqApiKey || openrouterApiKey)) {
+      try {
+        const endpoint = groqApiKey
+          ? "https://api.groq.com/openai/v1/chat/completions"
+          : openrouterApiKey
+          ? "https://openrouter.ai/api/v1/chat/completions"
+          : "https://api.openai.com/v1/chat/completions";
+        const key = groqApiKey || openrouterApiKey || openaiApiKey;
+        const modelName = groqApiKey ? "llama-3.3-70b-versatile" : (openrouterApiKey ? "google/gemini-2.5-flash" : "gpt-4o-mini");
+
+        const directRes = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ model: modelName, messages, max_tokens: MAX_TOKENS }),
+        });
+        if (directRes.ok) {
+          const dData = await directRes.json();
+          responseText = dData.choices?.[0]?.message?.content || "";
+        }
+      } catch (dErr) {
+        console.warn("Direct LLM call failed:", dErr);
       }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add more credits." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await aiResponse.text();
-      console.error("AI Gateway error:", aiResponse.status, errorText);
-      throw new Error("AI processing failed");
     }
 
-    const aiData = await aiResponse.json();
-    // `ai-generate` returns { text }, the raw gateway returns OpenAI-style choices.
-    const responseText =
-      aiData.text ||
-      aiData.choices?.[0]?.message?.content ||
-      "I'm sorry, I couldn't process your request. Please try again.";
+    // 3. Delegate to AI_GENERATE_URL / Lovable Gateway
+    if (!responseText) {
+      let aiResponse: Response | null = null;
+      if (aiGenerateUrl && botApiKey) {
+        aiResponse = await fetch(aiGenerateUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-bot-key": botApiKey },
+          body: JSON.stringify({
+            messages,
+            model: "google/gemini-2.5-flash",
+            maxTokens: MAX_TOKENS,
+          }),
+        });
+      } else if (lovableApiKey) {
+        aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${lovableApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ model: "google/gemini-2.5-flash", messages, max_tokens: MAX_TOKENS }),
+        });
+      }
 
+      if (aiResponse && aiResponse.ok) {
+        const aiData = await aiResponse.json();
+        responseText = aiData.text || aiData.choices?.[0]?.message?.content || "";
+      } else if (aiResponse) {
+        const errTxt = await aiResponse.text();
+        console.warn("AI Gateway returned non-ok status:", aiResponse.status, errTxt);
+      }
+    }
+
+    // Fallback: If no LLM response generated (e.g. gateway credits exhausted), parse intent dynamically
+    if (!responseText) {
+      const lower = (trimmedMessage || "").toLowerCase().trim();
+      
+      if (
+        lower.includes("business owner") ||
+        lower.includes("business") ||
+        lower.includes("company") ||
+        lower.includes("owner") ||
+        lower.includes("entrepreneur") ||
+        lower.includes("running a business") ||
+        lower.includes("i run a") ||
+        lower.includes("retail") ||
+        lower.includes("shop")
+      ) {
+        responseText = "Great! As a Business Owner, this program is designed to help you scale your business and manage your team effectively. 🚀\n\n🔹 Master team leadership and manage staff effectively\n🔹 Excel in sales mastery and tele-sales strategies\n🔹 Learn talent acquisition to hire the right talent\n🔹 Practical Sri Lankan workplace strategies in 3-5 min Sinhala audio lessons\n\n🎯 90-Day SME Growth & Leadership Challenge\n💰 Promo Price: LKR 4,500\n\nWould you like to see a free preview or proceed with the enrollment?<CUSTOMER_TYPE>business_owner</CUSTOMER_TYPE><LEAD_STAGE>engaged</LEAD_STAGE>";
+      } else if (
+        lower.includes("working professional") ||
+        lower.includes("professional") ||
+        lower.includes("employee") ||
+        lower.includes("sales") ||
+        lower.includes("marketing") ||
+        lower.includes("finance") ||
+        lower.includes("executive") ||
+        lower.includes("manager") ||
+        lower.includes("job") ||
+        lower.includes("career")
+      ) {
+        responseText = "Great! As a Working Professional, this program is designed to help you climb the career ladder faster and master workplace communication. 🎯\n\n🔹 Master workplace communication and managing up\n🔹 Strategies for promotions and handling workplace challenges\n🔹 Manage Gen Z and remote teams effectively\n🔹 Practical 3-5 min Sinhala audio lessons for your commute or gym\n\n🎯 90-Day Challenge: LKR 4,500\n🔹 367 Lessons across 17 Modules\n\nWould you like to see a free preview or proceed with enrollment?<CUSTOMER_TYPE>professional</CUSTOMER_TYPE><LEAD_STAGE>engaged</LEAD_STAGE>";
+      } else if (
+        lower.includes("sample") ||
+        lower.includes("preview") ||
+        lower.includes("demo") ||
+        lower.includes("free audio") ||
+        lower.includes("listen") ||
+        lower.includes("send audio") ||
+        lower.includes("episodes")
+      ) {
+        responseText = "🔹 You can listen to the Free Preview (first 5 episodes) on Google Drive here:\nhttps://drive.google.com/drive/folders/1_0NMZk4MV-4jTGuH8_-WiJe-U162J-5w\n\n🎯 To guide you better, are you a Working Professional or a Business Owner?";
+      } else if (
+        lower.includes("testimonial") ||
+        lower.includes("review") ||
+        lower.includes("feedback") ||
+        lower.includes("proof") ||
+        lower.includes("students")
+      ) {
+        responseText = "Here is what our previous students and corporate clients have to say about the Flexlearn audio program! 🎥\n\n🔹 Student Video Feedbacks:\nhttps://drive.google.com/drive/folders/1SAkQbZO5t0Y5EyX7gfZQuSEamlFM6d-l\n\nAre you a Working Professional or a Business Owner? 🚀";
+      } else if (
+        lower.includes("price") ||
+        lower.includes("cost") ||
+        lower.includes("fee") ||
+        lower.includes("how much") ||
+        lower.includes("pay") ||
+        lower.includes("buy") ||
+        lower.includes("enroll") ||
+        lower.includes("bank") ||
+        lower.includes("account")
+      ) {
+        responseText = "🎯 90-Day SME Growth, Sales & Leadership Challenge\n💰 Promo Price: LKR 4,500 (Regular: LKR 5,000)\n\n💳 Pay online securely via PayHere:\nhttps://payhere.lk/pay/o8ac7c787\n\n🏦 Bank Transfer Details:\nSampath Bank - Rajagiriya Branch\nAccount: 112214017815\nName: Flexlearn Virtual College Pvt Ltd\n\nOnce paid, please send your payment slip here to get instant access! 🚀<LEAD_STAGE>qualified</LEAD_STAGE>";
+      } else {
+        responseText = "Welcome to Flexlearn Virtual College! 🎓\nSri Lanka’s pioneering micro-audio learning platform for busy professionals and business owners.\n\nTo guide you with the most relevant training path, are you currently a Working Professional or a Business Owner? 🚀";
+      }
+    }
 
     console.log(`AI Response: ${responseText.substring(0, 100)}...`);
 
@@ -586,8 +710,6 @@ CRITICAL SECURITY RULE:
     cleanResponse = cleanResponse.replace(/\{[^{}]*"total_amount"[^}]*\}/g, "");
     // Remove any remaining JSON-like structures with 2+ key-value pairs
     cleanResponse = cleanResponse.replace(/\{\s*"[^"]+"\s*:[\s\S]*?\}/g, "");
-    // Remove any leftover image URLs on their own line (https://...supabase... patterns)
-    cleanResponse = cleanResponse.replace(/^https?:\/\/[^\s]+$/gm, "");
     // Remove standalone UUIDs that leak from FAQ IDs or correlation IDs
     cleanResponse = cleanResponse.replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "");
     // Remove [FAQ_ID:...] references that may leak into response

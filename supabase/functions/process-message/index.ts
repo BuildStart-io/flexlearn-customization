@@ -236,6 +236,15 @@ async function processMessage(
     if (sent) return;
   }
 
+  // 4b. Check predefined messages & automated triggers (message-count or intent/keywords)
+  const predefinedHandled = await handlePredefinedMessages(
+    supabase, supabaseUrl, supabaseServiceKey, userId, phoneNumber, messageText, sessionApiKey, corrId, timings, mark
+  );
+  if (predefinedHandled) {
+    console.log(`[${corrId}] Predefined response handled completely, skipping AI call`);
+    return;
+  }
+
   // 5. Get conversation history
   mark("history_start");
   const { data: conversationHistory } = await supabase
@@ -472,20 +481,158 @@ async function sendWhatsApp(
   }
 }
 
+async function handlePredefinedMessages(
+  supabase: any,
+  supabaseUrl: string,
+  supabaseServiceKey: string,
+  userId: string,
+  phoneNumber: string,
+  messageText: string,
+  sessionApiKey: string,
+  corrId: string,
+  timings: Record<string, number>,
+  mark: (label: string) => void
+): Promise<boolean> {
+  try {
+    const { data: predefinedSetting } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "predefined_messages")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const rawRules = predefinedSetting?.value;
+    const rules: any[] = Array.isArray(rawRules)
+      ? rawRules
+      : (Array.isArray(rawRules?.rules) ? rawRules.rules : []);
+
+    const activeRules = rules.filter((r) => r && r.enabled !== false);
+    if (activeRules.length === 0) return false;
+
+    // Count inbound messages from this phone number
+    const { count: inboundCount } = await supabase
+      .from("conversations")
+      .select("id", { count: "exact", head: true })
+      .eq("phone_number", phoneNumber)
+      .eq("direction", "inbound")
+      .eq("user_id", userId);
+
+    const msgLower = (messageText || "").toLowerCase().trim();
+
+    // Check prior sent predefined rules for this phone number
+    const { data: priorRows } = await supabase
+      .from("conversations")
+      .select("metadata")
+      .eq("user_id", userId)
+      .eq("phone_number", phoneNumber)
+      .eq("direction", "outbound")
+      .not("metadata", "is", null)
+      .limit(100);
+
+    const sentRuleIds = new Set<string>();
+    for (const row of priorRows || []) {
+      const ruleId = (row as any)?.metadata?.predefined_rule_id;
+      if (ruleId) sentRuleIds.add(ruleId);
+    }
+
+    // 1. Check keyword / intent rules
+    for (const rule of activeRules) {
+      if (rule.trigger_type === "intent" || rule.trigger_type === "keyword" || (!rule.trigger_type && Array.isArray(rule.keywords) && rule.keywords.length > 0)) {
+        const keywords = Array.isArray(rule.keywords) ? rule.keywords : [];
+        const matchesKeyword = keywords.some((kw: string) => kw && msgLower.includes(kw.toLowerCase().trim()));
+
+        if (matchesKeyword && (!rule.once_per_contact || !sentRuleIds.has(rule.id))) {
+          console.log(`[${corrId}] Triggering predefined intent rule "${rule.name || rule.id}" for ${phoneNumber}`);
+          await dispatchPredefinedRule(supabase, supabaseUrl, supabaseServiceKey, userId, phoneNumber, rule, sessionApiKey, corrId, mark);
+          return true; // handled completely
+        }
+      }
+    }
+
+    // 2. Check message count rules (e.g., after 2nd, 3rd message)
+    for (const rule of activeRules) {
+      if (rule.trigger_type === "message_count") {
+        const targetCount = Number(rule.trigger_count || rule.message_count || 0);
+        if (targetCount > 0 && targetCount === (inboundCount || 0) && !sentRuleIds.has(rule.id)) {
+          console.log(`[${corrId}] Triggering predefined message-count rule "${rule.name || rule.id}" (count=${targetCount}) for ${phoneNumber}`);
+          await dispatchPredefinedRule(supabase, supabaseUrl, supabaseServiceKey, userId, phoneNumber, rule, sessionApiKey, corrId, mark);
+          return false; // message sent as supplementary, allow AI to also reply if appropriate
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`[${corrId}] Error processing predefined messages:`, err);
+  }
+  return false;
+}
+
+async function dispatchPredefinedRule(
+  supabase: any,
+  supabaseUrl: string,
+  supabaseServiceKey: string,
+  userId: string,
+  phoneNumber: string,
+  rule: any,
+  sessionApiKey: string,
+  corrId: string,
+  mark: (label: string) => void
+) {
+  mark("predefined_send_start");
+  const mediaUrls: string[] = Array.isArray(rule.media_urls)
+    ? rule.media_urls
+    : (rule.media_url ? [rule.media_url] : []);
+  const messageText = (rule.message || "").trim();
+  const mediaType = rule.media_type || undefined;
+
+  // Send media files first
+  for (const url of mediaUrls) {
+    if (url && typeof url === "string" && url.trim()) {
+      await sendWhatsAppMedia(supabaseUrl, supabaseServiceKey, phoneNumber, url.trim(), sessionApiKey, mediaType);
+    }
+  }
+
+  // Send text message
+  if (messageText) {
+    await sendWhatsApp(supabaseUrl, supabaseServiceKey, phoneNumber, messageText, null, sessionApiKey);
+  }
+
+  // Store in conversations
+  await supabase.from("conversations").insert({
+    phone_number: phoneNumber,
+    message: messageText || (mediaUrls.length > 0 ? `[Media: ${mediaUrls[0]}]` : ""),
+    direction: "outbound",
+    message_type: mediaUrls.length > 0 ? (mediaType || "media") : "text",
+    metadata: {
+      type: "predefined_message",
+      predefined_rule_id: rule.id,
+      rule_name: rule.name,
+      media_urls: mediaUrls,
+      correlationId: corrId,
+    },
+    user_id: userId,
+  });
+
+  mark("predefined_send_end");
+}
+
 async function sendWhatsAppMedia(
   supabaseUrl: string,
   supabaseServiceKey: string,
   to: string,
   mediaUrl: string,
-  sessionApiKey: string
+  sessionApiKey: string,
+  mediaType?: string
 ) {
+  const body: any = { to, mediaUrl, sessionApiKey };
+  if (mediaType) body.mediaType = mediaType;
+
   const res = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${supabaseServiceKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ to, mediaUrl, sessionApiKey }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {

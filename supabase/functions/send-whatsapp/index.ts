@@ -8,8 +8,23 @@ const corsHeaders = {
 const WAHA_BASE = (Deno.env.get("WAHA_BASE_URL") || "").replace(/\/+$/, "");
 const WAHA_KEY = Deno.env.get("WAHA_API_KEY") || "";
 
+function isDirectMediaUrl(url: string): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  if (lower.includes("drive.google.com") || lower.includes("payhere.lk") || lower.includes("linkedin.com") || lower.includes("facebook.com")) {
+    return false;
+  }
+  return true;
+}
+
+function normalizeMediaUrlForWaha(rawUrl: string): string {
+  if (!rawUrl) return rawUrl;
+  return rawUrl.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8000/, "http://kong:8000");
+}
+
 function detectMediaType(url: string): "image" | "video" | "audio" | "document" | null {
   if (!url) return null;
+  if (!isDirectMediaUrl(url)) return null;
   const lower = url.toLowerCase();
   if (/\.(jpg|jpeg|png|webp|gif)(\?|$)/.test(lower)) return "image";
   if (/\.(mp4|mov|avi|webm|3gp|3gpp)(\?|$)/.test(lower)) return "video";
@@ -30,28 +45,38 @@ function toChatId(to: string): string {
   return `${digits}@c.us`;
 }
 
-
 function filenameFromUrl(url: string): string {
   try {
     const u = new URL(url);
     const last = u.pathname.split("/").filter(Boolean).pop() || "file";
-    return last.split("?")[0];
+    const clean = decodeURIComponent(last.split("?")[0]);
+    // Strip timestamp prefix e.g. 1787636666318_ if present for clean display name
+    const stripped = clean.replace(/^\d{10,14}_/, "");
+    return stripped || clean || "audio.wav";
   } catch {
     return "file";
   }
 }
 
-async function wahaFetch(path: string, body: any) {
+async function wahaFetch(path: string, body: any, timeoutMs = 25000) {
   if (!WAHA_BASE) throw new Error("WAHA_BASE_URL not configured");
-  return fetch(`${WAHA_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "X-Api-Key": WAHA_KEY,
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${WAHA_BASE}${path}`, {
+      method: "POST",
+      headers: {
+        "X-Api-Key": WAHA_KEY,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    return res;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 serve(async (req) => {
@@ -72,35 +97,47 @@ serve(async (req) => {
     // `sessionApiKey` is now the WAHA session name (kept variable name for back-compat with callers).
     const sessionName = sessionApiKey || Deno.env.get("WAHA_DEFAULT_SESSION") || "default";
     const chatId = toChatId(to);
-    const url = mediaUrl || imageUrl;
+    const rawUrl = mediaUrl || imageUrl;
+    const isDirect = rawUrl ? isDirectMediaUrl(rawUrl) : false;
+    const url = isDirect && rawUrl ? normalizeMediaUrlForWaha(rawUrl) : null;
     const detectedType = explicitType || (url ? detectMediaType(url) : null);
 
     console.log(`Sending WhatsApp via WAHA session=${sessionName} to=${chatId}${url ? ` (${detectedType})` : ""}: ${(message || "").substring(0, 60)}`);
 
-    let res: Response;
+    let res: Response | null = null;
 
-    if (url) {
+    if (url && isDirect) {
       const fileName = filenameFromUrl(url);
       const file = { url, filename: fileName, mimetype: undefined as string | undefined };
       const caption = message || "";
 
-      switch (detectedType) {
-        case "video":
-          res = await wahaFetch("/api/sendVideo", { session: sessionName, chatId, file, caption });
-          break;
-        case "audio":
-          res = await wahaFetch("/api/sendVoice", { session: sessionName, chatId, file });
-          break;
-        case "document":
-          res = await wahaFetch("/api/sendFile", { session: sessionName, chatId, file, caption });
-          break;
-        case "image":
-        default:
-          res = await wahaFetch("/api/sendImage", { session: sessionName, chatId, file, caption });
-          break;
+      try {
+        switch (detectedType) {
+          case "video":
+            res = await wahaFetch("/api/sendVideo", { session: sessionName, chatId, file, caption }, 25000);
+            break;
+          case "audio":
+            // Send audio files directly as WAV/audio documents via /api/sendFile for high reliability
+            res = await wahaFetch("/api/sendFile", { session: sessionName, chatId, file, caption }, 25000);
+            break;
+          case "document":
+            res = await wahaFetch("/api/sendFile", { session: sessionName, chatId, file, caption }, 25000);
+            break;
+          case "image":
+          default:
+            res = await wahaFetch("/api/sendImage", { session: sessionName, chatId, file, caption }, 25000);
+            break;
+        }
+      } catch (mediaErr) {
+        console.warn("Media send failed or timed out, falling back to text:", mediaErr);
+        if (caption) {
+          res = await wahaFetch("/api/sendText", { session: sessionName, chatId, text: caption }, 10000);
+        }
       }
     } else {
-      res = await wahaFetch("/api/sendText", { session: sessionName, chatId, text: message });
+      // If there's a non-direct URL (e.g. Drive folder) and a message, send as text
+      const fullText = (message || "").trim();
+      res = await wahaFetch("/api/sendText", { session: sessionName, chatId, text: fullText || rawUrl || "" }, 10000);
     }
 
     const responseText = await res.text();
