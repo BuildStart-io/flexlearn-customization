@@ -119,12 +119,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {!isMobile && (
           <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-card border-r">
             <div className="flex flex-col h-full">
-              <div className="flex items-center justify-between p-6 border-b">
-                <div className="flex items-center gap-2">
-                  <img src={buildstartLogo} alt="Flexlearn" className="h-7 w-7" />
-                  <span className="font-semibold text-lg">{isAdminRoute ? "Super Admin" : "Flexlearn AI"}</span>
-                </div>
-                <ThemeToggle variant="button" className="h-8 w-8" />
+              <div className="flex items-center gap-2 p-6 border-b">
+                <img src={buildstartLogo} alt="Flexlearn" className="h-7 w-7" />
+                <span className="font-semibold text-lg">{isAdminRoute ? "Super Admin" : "Flexlearn AI"}</span>
               </div>
 
               <nav className="flex-1 p-4 space-y-1">
