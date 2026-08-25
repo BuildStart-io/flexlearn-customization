@@ -1,68 +1,58 @@
 # Flexlearn Customizations (`flexlearn-customization`)
 
-This repository contains the custom features and system enhancements built on top of the BuildStart self-hosted platform for **Flexlearn Virtual College (Pvt) Ltd**.
+This repository contains the custom features and system enhancements built for **Flexlearn Virtual College (Pvt) Ltd**:
 
 ---
 
-## 🚀 Added Customizations & Features
-
-### 1. Customers Management Tab (`/dashboard/customers`)
-A dedicated dashboard for managing verified paying students and clients:
-- **Automatic Aggregation**: Aggregates unique paying students from the `orders` table, tracking lifetime spend (LKR), total orders, enrolled programs (*"90-Day SME Growth, Sales & Leadership Challenge"*), and district.
-- **Search & Filtering**: Real-time search across student names, WhatsApp phone numbers, districts, and products, with status filters (*Paid/Active*, *Delivered*, *Processing*, *Pending*).
-- **Student Profile Drawer**: Inspect complete order histories, payment methods, delivery status, and LMS notes for any student.
-- **Manual Customer Registration**: An **"Add Customer"** modal allows admins and staff to manually enroll students and record offline bank payments directly into the system.
-- **Export Data**: One-click export of customer records to CSV.
-
----
-
-### 2. Schedule Tab with Anti-Spam Jitter Engine (`/dashboard/schedule`)
-An intelligent WhatsApp broadcast scheduler designed to prevent spam detection:
-- **Anti-Spam Time Slot & Jitter Algorithm**:
-  - Divides the chosen daily time window (e.g. `09:00` to `17:00`) across the selected date range by the number of recipient students.
-  - Shuffles the recipient queue and applies a **randomized non-linear jitter timestamp** within each time slot.
-  - Disperses message deliveries naturally throughout the day (e.g., *"1 message every ~8.5 minutes with random jitter"*), protecting the WhatsApp number from bulk broadcast bans.
-- **Personalized Message Templates**: Supports dynamic variable interpolation (`{name}`, `{product}`, `{district}`) with live WhatsApp message bubble preview.
-- **Audience Selection**: Target all paying customers or filter by specific programs/districts.
-- **Live Timeline Simulation**: Previews the exact simulated dispatch timestamps before confirming the schedule.
-- **Campaign Controls**: Real-time progress bars (`X / Y sent`), pause, resume, and per-message delivery logs.
+### 1. 🤖 AI Student Counsellor & Sales Engine
+- **Specialized Persona**: Configured as an empathetic AI Student Counsellor representing Flexlearn Virtual College and founder Niroshan Gunatilaka.
+- **Sinhala & English Auto-Detection**: Auto-detects and replies in fluent native Sinhala (Unicode or Singlish) and English.
+- **Customer Persona Classification**: Identifies whether an inbound lead is a **Working Professional** or a **Business Owner / SME Entrepreneur** and delivers tailored pitches.
+- **"90-Day SME Growth, Sales & Leadership Challenge" Pitch**:
+  - Full bundle of 17 modules and 367 bite-sized audios (3–5 mins each in Sinhala) on `www.flexlearn.lk`.
+  - Promotes the promotional price of **LKR 4,500** (Regular: LKR 5,000).
+  - Clarifies that individual courses are not sold separately for comprehensive skill development.
+- **Free Sample & Testimonial Delivery**: Automatically shares the 5 free preview audios Drive link and previous student video feedback folder.
+- **Payment & Onboarding Integration**:
+  - Delivers the online PayHere checkout link (`https://payhere.lk/pay/o8ac7c787`) and Sampath Bank details (A/C: 112214017815, Rajagiriya Branch).
+  - Collects payment slip proof, name, email, and phone number for account setup on `www.flexlearn.lk`.
+- **90-Day Renewal Guidance**: Explains the Monthly Subscription renewal link (`https://payhere.lk/pay/oc94df555`) or 90-day repeat after 3 months.
+- **Corporate Training Lead Capture**: Captures company name, contact person, phone, and email for enterprise training inquiries and flags for admin follow-up.
+- **Dynamic Context Loading**: AI dynamically loads payment accounts, active products, and FAQs directly from the database in real time.
 
 ---
 
-### 3. Direct Customer Enrollment from Live Chats (`/dashboard/conversations`)
-- Added an **"Add Customer"** action directly in the conversation header.
-- Instantly converts chatting leads into registered paying students by auto-populating their name and WhatsApp number into the enrollment dialog.
+### 2. 👥 Customers Management Dashboard (`/dashboard/customers`)
+- **Paying Student Registry**: Automatically aggregates paying students from orders with metrics for total spend (LKR), total orders, enrolled programs, and districts.
+- **Search & Filtering**: Real-time search across student names, phone numbers, districts, and payment statuses (*Paid/Active*, *Delivered*, *Processing*, *Pending*).
+- **Student Profile Drawer**: Inspect complete order history, payment methods, delivery status, and notes.
+- **Manual Customer Registration**: An **"Add Customer"** modal allows admins to manually register students and log offline bank payments.
+- **CSV Export**: One-click export of customer records.
 
 ---
 
-### 4. Background Automated Broadcast Dispatcher
-- **Edge Function (`supabase/functions/send-scheduled`)**: Checks and claims pending scheduled messages whose scheduled timestamp has arrived, dispatches them through the WAHA WhatsApp API, and tracks delivery status.
-- **Chat History Synchronization**: Automatically inserts outbound broadcast logs into the `conversations` table so scheduled messages appear seamlessly inside each customer's live chat thread.
-- **Automated Scheduling (`pg_cron`)**: Runs every minute via PostgreSQL cron triggers to process pending broadcasts in real time.
+### 3. ⏱️ Anti-Spam Broadcast Scheduler (`/dashboard/schedule`)
+- **Anti-Spam Time Slot & Jitter Engine**:
+  - Partitions the chosen daily window across the campaign duration by the number of recipient students.
+  - Applies a randomized non-linear jitter timestamp to each message, protecting the WhatsApp number from bulk broadcast bans.
+- **Personalized Message Templates**: Supports dynamic variables (`{name}`, `{product}`, `{district}`) with live WhatsApp message bubble preview.
+- **Audience Targeting**: Broadcast to all paying customers or filter by specific programs/districts.
+- **Live Timeline Simulation**: Previews exact simulated dispatch timestamps before confirming.
+- **Background Dispatcher (`supabase/functions/send-scheduled`)**: PostgreSQL cron (`pg_cron`) automatically processes pending messages every minute and syncs logs to live chat threads.
 
 ---
 
-### 5. Dynamic Database-Driven AI Prompt & Payment Engine
-- **100% Dynamic Context**: The AI Student Counsellor prompt in `supabase/functions/ai-chat` dynamically reads active products, FAQs, delivery settings, and payment accounts from the database `settings` table.
-- **Zero-Code Payment Updates**: Any bank accounts (Sampath Bank, Commercial Bank), online links (PayHere), or digital wallets added under **Settings → Payment** are automatically formatted and offered by the bot in real time.
+### 4. 💬 Direct Customer Enrollment from Live Chats (`/dashboard/conversations`)
+- Quick **"Add Customer"** action in the chat header that auto-fills the lead's name and WhatsApp number into the enrollment modal.
 
 ---
 
-## 📁 Key File Structure of Customizations
+### 5. 🎯 Leads Pipeline with Persona Badges (`/dashboard/leads`)
+- Visual badges for customer classification (**`💼 Professional`**, **`🏢 Business Owner`**, **`🏛️ Corporate`**) and lead stages.
+- Filter leads by persona type, follow-up status, or assigned staff member.
 
-```
-├── db/
-│   ├── 03_cron.sql                   # pg_cron job configuration including send-scheduled
-│   └── 04_scheduled_broadcasts.sql   # Schema for scheduled_campaigns & scheduled_messages
-├── frontend/src/
-│   ├── pages/
-│   │   ├── Customers.tsx             # Customers dashboard & order history view
-│   │   ├── Schedule.tsx              # Broadcast campaign manager & anti-spam visualizer
-│   │   └── Conversations.tsx         # Chat view with direct "Add Customer" integration
-│   └── components/
-│       └── customers/
-│           └── AddCustomerDialog.tsx # Reusable customer enrollment & order creation modal
-└── supabase/functions/
-    ├── ai-chat/                      # Dynamic student counsellor & payment loader
-    └── send-scheduled/               # Automated WhatsApp broadcast dispatcher worker
-```
+---
+
+### 6. 🔁 Automated Follow-Up & Renewal Sequences (`supabase/functions/send-followups`)
+- **Unconverted Leads Follow-Up**: Automatically follows up with leads who paused before buying, offering the 5 free sample audios and promo discount.
+- **Active Students 3-Month Renewal Follow-Up**: Triggers around Day 85 of access to guide students to the PayHere Monthly Subscription plan or 90-day renewal.
