@@ -1,5 +1,6 @@
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ThemeToggleProps {
   variant?: "button" | "sidebar";
@@ -10,64 +11,75 @@ export default function ThemeToggle({ variant = "sidebar", className = "" }: The
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
+  const toggleTheme = () => {
+    setTheme(isDark ? "light" : "dark");
+  };
+
   if (variant === "button") {
     return (
       <button
         type="button"
-        className={`inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors ${className}`}
-        onClick={() => setTheme(isDark ? "light" : "dark")}
-        title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      >
-        {isDark ? (
-          <Sun className="h-4 w-4 text-amber-500 transition-all" />
-        ) : (
-          <Moon className="h-4 w-4 text-purple-600 transition-all" />
+        onClick={toggleTheme}
+        className={cn(
+          "relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/60 bg-card/60 backdrop-blur-xs text-foreground hover:bg-muted/80 hover:text-foreground transition-all duration-200 active:scale-95 shadow-2xs",
+          className
         )}
+        title={isDark ? "Switch to Light mode" : "Switch to Dark mode"}
+      >
+        <Sun className={cn(
+          "h-4 w-4 transition-all duration-300",
+          isDark ? "scale-0 rotate-90 opacity-0" : "scale-100 rotate-0 opacity-100 text-amber-500"
+        )} />
+        <Moon className={cn(
+          "absolute h-4 w-4 transition-all duration-300",
+          isDark ? "scale-100 rotate-0 opacity-100 text-primary" : "scale-0 -rotate-90 opacity-0"
+        )} />
         <span className="sr-only">Toggle theme</span>
       </button>
     );
   }
 
   return (
-    <div className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium bg-muted/40 border border-border/50 ${className}`}>
-      <div className="flex items-center gap-2 text-foreground">
-        {isDark ? (
-          <Moon className="h-4 w-4 text-purple-400" />
-        ) : (
-          <Sun className="h-4 w-4 text-amber-500" />
-        )}
-        <span className="text-xs font-medium">
-          {isDark ? "Dark Mode" : "Light Mode"}
+    <button
+      type="button"
+      onClick={toggleTheme}
+      className={cn(
+        "group flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+        "text-muted-foreground hover:bg-muted/70 hover:text-foreground active:scale-[0.99]",
+        className
+      )}
+      title={isDark ? "Switch to Light mode" : "Switch to Dark mode"}
+    >
+      <div className="flex items-center gap-3">
+        <div className="relative flex items-center justify-center h-5 w-5">
+          <Sun className={cn(
+            "h-4 w-4 transition-all duration-300",
+            isDark ? "scale-0 rotate-90 opacity-0 text-amber-500" : "scale-100 rotate-0 opacity-100 text-amber-500"
+          )} />
+          <Moon className={cn(
+            "absolute h-4 w-4 transition-all duration-300",
+            isDark ? "scale-100 rotate-0 opacity-100 text-primary" : "scale-0 -rotate-90 opacity-0"
+          )} />
+        </div>
+        <span className="font-medium text-xs sm:text-sm">
+          {isDark ? "Dark Theme" : "Light Theme"}
         </span>
       </div>
-      <div className="flex items-center bg-background rounded-md p-0.5 border border-border">
-        <button
-          type="button"
-          onClick={() => setTheme("light")}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-all ${
-            !isDark
-              ? "bg-primary text-primary-foreground shadow-xs"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-          title="Light Mode"
-        >
-          <Sun className="h-3.5 w-3.5" />
-          <span>Light</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setTheme("dark")}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-all ${
-            isDark
-              ? "bg-primary text-primary-foreground shadow-xs"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-          title="Dark Mode"
-        >
-          <Moon className="h-3.5 w-3.5" />
-          <span>Dark</span>
-        </button>
+
+      {/* Sleek minimal iOS/shadcn switch track */}
+      <div 
+        className={cn(
+          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent p-0.5 transition-colors duration-200 ease-in-out",
+          isDark ? "bg-primary" : "bg-muted-foreground/25 group-hover:bg-muted-foreground/35"
+        )}
+      >
+        <span
+          className={cn(
+            "pointer-events-none block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition-transform duration-200 ease-in-out",
+            isDark ? "translate-x-4" : "translate-x-0"
+          )}
+        />
       </div>
-    </div>
+    </button>
   );
 }
