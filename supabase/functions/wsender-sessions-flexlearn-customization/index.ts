@@ -101,7 +101,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      db: { schema: "flexlearn-customization" },
+      db: { schema: "flexlearn_customization" },
     });
 
     const authHeader = req.headers.get("authorization") || "";
@@ -111,7 +111,8 @@ serve(async (req) => {
     }
     const authClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
-      db: { schema: "flexlearn-customization" },
+      db: { schema: "flexlearn_customization" },
+      db: { schema: "flexlearn_customization" },
     });
     const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
     if (claimsError || !claimsData?.claims?.sub) {
@@ -123,7 +124,10 @@ serve(async (req) => {
     const action = url.searchParams.get("action") || "";
 
     const sessionName = `u_${userId.replace(/-/g, "").substring(0, 20)}`;
-    const webhookUrl = Deno.env.get("WEBHOOK_URL_OVERRIDE") || `${supabaseUrl}/functions/v1/webhook-wsender-flexlearn-customization`;
+    let webhookUrl = Deno.env.get("WEBHOOK_URL_OVERRIDE") || `${supabaseUrl}/functions/v1/webhook-wsender-flexlearn-customization`;
+    if (webhookUrl.includes("webhook-wsender") && !webhookUrl.includes("webhook-wsender-flexlearn-customization")) {
+      webhookUrl = webhookUrl.replace("webhook-wsender", "webhook-wsender-flexlearn-customization");
+    }
 
     const upsertMapping = async (displayName?: string) => {
       await supabase.from("user_wsender_sessions").upsert(

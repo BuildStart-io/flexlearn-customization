@@ -25,7 +25,7 @@ serve(async (req) => {
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-    db: { schema: "flexlearn-customization" },
+    db: { schema: "flexlearn_customization" },
   });
 
   const correlationId = crypto.randomUUID();

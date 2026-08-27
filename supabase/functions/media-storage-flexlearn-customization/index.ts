@@ -28,7 +28,7 @@ const MAX_BYTES = 50 * 1024 * 1024;
 
 /** FAQ attachments live in their own dedicated bucket, separate from product/welcome media. */
 function bucketFor(ownerId: string, folder?: string) {
-  return folder === "faq" ? `faqmedia-${ownerId}` : `biz-${ownerId}`;
+  return folder === "faq" ? `flexlearn-faqmedia-${ownerId}` : `flexlearn-biz-${ownerId}`;
 }
 
 function json(body: unknown, status = 200) {
@@ -77,14 +77,14 @@ async function resolveOwner(req: Request): Promise<{ ownerId: string; userId: st
   if (!token) return null;
 
   const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    db: { schema: "flexlearn-customization" },
+    db: { schema: "flexlearn_customization" },
   });
   const { data, error } = await authClient.auth.getClaims(token);
   const userId = (data as any)?.claims?.sub;
   if (error || !userId) return null;
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
-    db: { schema: "flexlearn-customization" },
+    db: { schema: "flexlearn_customization" },
   });
   const { data: staff } = await admin
     .from("staff_accounts")

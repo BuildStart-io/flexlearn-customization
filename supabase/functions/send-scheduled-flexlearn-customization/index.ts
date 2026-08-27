@@ -14,7 +14,7 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey, {
-    db: { schema: "flexlearn-customization" },
+    db: { schema: "flexlearn_customization" },
   });
 
   try {
