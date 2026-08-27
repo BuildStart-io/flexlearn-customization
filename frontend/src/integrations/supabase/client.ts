@@ -18,6 +18,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, 
     autoRefreshToken: true,
   },
   db: {
-    schema: "flexlearn-customization",
+    schema: "flexlearn_customization",
   },
 });
