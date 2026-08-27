@@ -208,7 +208,7 @@ export default function AddCustomerDialog({
               Add Customer & Record Payment
             </DialogTitle>
             <DialogDescription>
-              Register a paying student/customer directly into the Flexlearn system.
+              Register a paying customer directly into the BuildStart system.
             </DialogDescription>
           </DialogHeader>
 

@@ -55,9 +55,9 @@ export default function Auth() {
           <div className="flex justify-center mb-4">
             <img src={buildstartLogo} alt="BuildStart" className="h-14 w-14" />
           </div>
-          <CardTitle className="text-2xl">Flexlearn Virtual College</CardTitle>
+          <CardTitle className="text-2xl">BuildStart</CardTitle>
           <CardDescription>
-            Sign in to manage your AI WhatsApp Student Counsellor & Learning Assistant
+            Sign in to manage your AI-powered WhatsApp chatbot
           </CardDescription>
         </CardHeader>
         <CardContent>

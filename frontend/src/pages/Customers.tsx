@@ -224,7 +224,7 @@ export default function Customers() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `flexlearn_customers_${format(new Date(), "yyyyMMdd_HHmm")}.csv`);
+    link.setAttribute("download", `buildstart_customers_${format(new Date(), "yyyyMMdd_HHmm")}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -727,10 +727,10 @@ export default function PredefinedMessagesManager({
         <DialogContent className="max-w-md p-0 overflow-hidden bg-[#0b141a] border-[#222e35] text-white">
           <div className="bg-[#202c33] p-3.5 flex items-center gap-3 border-b border-[#222e35]">
             <div className="h-9 w-9 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white text-sm shrink-0">
-              FL
+              BS
             </div>
             <div className="min-w-0 flex-1">
-              <div className="font-semibold text-sm text-[#e9edef] truncate">Flexlearn Support Bot</div>
+              <div className="font-semibold text-sm text-[#e9edef] truncate">BuildStart Support Bot</div>
               <div className="text-[11px] text-[#8696a0] truncate">
                 Rule: {previewRule?.name}
               </div>

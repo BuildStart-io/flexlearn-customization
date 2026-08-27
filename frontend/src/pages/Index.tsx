@@ -7,13 +7,22 @@ const Index = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      navigate(session ? "/dashboard" : "/auth");
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        navigate(session ? "/dashboard" : "/auth", { replace: true });
+      } catch (err) {
+        console.error("Auth check error:", err);
+        navigate("/auth", { replace: true });
+      }
     };
     checkAuth();
   }, [navigate]);
 
-  return null;
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-muted/30">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  );
 };
 
 export default Index;
