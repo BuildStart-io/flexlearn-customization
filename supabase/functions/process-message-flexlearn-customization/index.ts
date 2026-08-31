@@ -571,14 +571,14 @@ async function dispatchPredefinedRule(
   const messageText = (rule.message || "").trim();
   const mediaType = rule.media_type || undefined;
 
+  if (messageText) {
+    await sendWhatsApp(supabaseUrl, supabaseServiceKey, phoneNumber, messageText, null, sessionApiKey);
+  }
+
   for (const url of mediaUrls) {
     if (url && typeof url === "string" && url.trim()) {
       await sendWhatsAppMedia(supabaseUrl, supabaseServiceKey, phoneNumber, url.trim(), sessionApiKey, mediaType);
     }
-  }
-
-  if (messageText) {
-    await sendWhatsApp(supabaseUrl, supabaseServiceKey, phoneNumber, messageText, null, sessionApiKey);
   }
 
   await supabase.from("conversations").insert({
