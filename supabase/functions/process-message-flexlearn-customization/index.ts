@@ -584,10 +584,19 @@ async function dispatchPredefinedRule(
 
   if (messageText) {
     await sendWhatsApp(supabaseUrl, supabaseServiceKey, phoneNumber, messageText, null, sessionApiKey);
+    if (mediaUrls.length > 0) {
+      // Pause 1.5s to ensure WhatsApp renders the text message before media arrives
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
   }
 
-  for (const url of mediaUrls) {
+  for (let i = 0; i < mediaUrls.length; i++) {
+    const url = mediaUrls[i];
     if (url && typeof url === "string" && url.trim()) {
+      if (i > 0) {
+        // Space out consecutive attachments by 800ms to preserve delivery order
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
       await sendWhatsAppMedia(supabaseUrl, supabaseServiceKey, phoneNumber, url.trim(), sessionApiKey, mediaType);
     }
   }
