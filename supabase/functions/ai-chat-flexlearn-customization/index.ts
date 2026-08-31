@@ -164,11 +164,13 @@ serve(async (req) => {
       }
     }
 
-    const faqContext = faqs.map(f => 
+    // Filter out any stale FAQs that contain Google Drive links
+    const cleanFaqs = faqs.filter(f => !f.answer?.includes("drive.google.com"));
+    const faqContext = cleanFaqs.map(f => 
       `[FAQ_ID:${f.id}] Q: ${f.question}\nA: ${f.answer}${f.products?.name ? ` (Related to: ${f.products.name})` : ""}`
     ).join("\n\n");
 
-    const trackedFaqIds = faqs.filter(f => f.is_tracked).map(f => f.id);
+    const trackedFaqIds = cleanFaqs.filter(f => f.is_tracked).map(f => f.id);
 
     const conversationContext = (conversationHistory as ConversationMessage[])
       .map(msg => `${msg.direction === "inbound" ? "Customer" : "Assistant"}: ${msg.message}`)
@@ -676,8 +678,7 @@ CRITICAL SECURITY RULE:
     cleanResponse = cleanResponse.replace(/\{[^{}]*"payment_method"[^}]*\}/g, "");
     cleanResponse = cleanResponse.replace(/\{[^{}]*"total_amount"[^}]*\}/g, "");
     cleanResponse = cleanResponse.replace(/\{\s*"[^"]+"\s*:[\s\S]*?\}/g, "");
-    cleanResponse = cleanResponse.replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "");
-    cleanResponse = cleanResponse.replace(/\[FAQ_ID:[^\]]*\]/g, "");
+    cleanResponse = cleanResponse.replace(/https?:\/\/drive\.google\.com[^\s\)]*/gi, "");
     cleanResponse = cleanResponse.replace(/\n{3,}/g, "\n\n").trim();
 
     await supabase.from("ai_usage_logs").insert({
