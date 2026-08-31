@@ -239,7 +239,7 @@ async function processMessage(
     return;
   }
 
-  // 5. Get conversation history
+  // 5. Get conversation history (excluding the current message just stored to prevent duplication)
   mark("history_start");
   const { data: conversationHistory } = await supabase
     .from("conversations")
@@ -247,8 +247,13 @@ async function processMessage(
     .eq("phone_number", phoneNumber)
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(11);
   mark("history_end");
+
+  // Exclude current message (index 0) so conversationHistory strictly contains previous turns
+  const priorHistory = (conversationHistory && conversationHistory.length > 1)
+    ? conversationHistory.slice(1).reverse()
+    : [];
 
   // 6. Call AI chat with timeout
   mark("ai_start");
@@ -267,7 +272,7 @@ async function processMessage(
         message: messageText,
         phoneNumber,
         senderName,
-        conversationHistory: conversationHistory?.reverse() || [],
+        conversationHistory: priorHistory,
         userId,
         sessionApiKey,
       }),
