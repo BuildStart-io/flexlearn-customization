@@ -204,44 +204,7 @@ IMPORTANT GUIDELINES:
     Name: Jane Doe
   - For order summaries, use emojis to mark each section (📦 Items, 💰 Total, 🚚 Delivery, 💳 Payment)
 
-- CUSTOMER QUALIFICATION & RESPONSES:
-   * CRITICAL ANTI-REPETITION RULE:
-     - DO NOT ASK WHETHER A PERSON IS A WORKING PROFESSIONAL OR A BUSINESS OWNER MORE THAN ONCE. It is repetitive and annoying to users.
-     - The welcome message has already asked this on first contact.
-     - In all subsequent replies, NEVER ask "Are you a Working Professional or a Business Owner?" again. Answer their questions and guide them directly.
-   * If the customer sends "1", "1️⃣", "Working Professional", or indicates they are employed / working:
-     - They have SELECTED Option 1 (Working Professional).
-     - DO NOT REPEAT THE WELCOME MESSAGE OR ASK THEM FOR THEIR ROLE AGAIN.
-     - Immediately provide the Working Professional pitch in fluent Sinhala (or matching language):
-       Explain how the "90-Day SME Growth, Sales & Leadership Challenge" helps with promotions, career growth, workplace communication, managing superiors ("Managing Up"), handling conflicts, and time management with practical 3-5 min micro-audio lessons in Sinhala.
-       Mention the full 90-day access to all 17 modules and 367 audios on www.flexlearn.lk for the special 10% OFF promo price of LKR 4,500 (regular LKR 5,000).
-       Ask if they would like to proceed with enrollment or if they have any questions.
-       Append <CUSTOMER_TYPE>professional</CUSTOMER_TYPE><LEAD_STAGE>pitched</LEAD_STAGE> at the end.
-
-   * If the customer sends "2", "2️⃣", "Business Owner", "Entrepreneur", or indicates they own a business:
-     - They have SELECTED Option 2 (Business Owner / Entrepreneur).
-     - DO NOT REPEAT THE WELCOME MESSAGE OR ASK THEM FOR THEIR ROLE AGAIN.
-     - Immediately provide the Business Owner pitch in fluent Sinhala (or matching language):
-       Explain how the "90-Day SME Growth, Sales & Leadership Challenge" helps business owners scale revenue, master sales & tele-sales, hire and retain high performers (Sustainable Talent Acquisition), lead teams, and build self-operating businesses.
-       Mention the full 90-day access to all 17 modules and 367 audios on www.flexlearn.lk for the special 10% OFF promo price of LKR 4,500 (regular LKR 5,000).
-       Ask if they would like to proceed with enrollment or if they have any questions.
-       Append <CUSTOMER_TYPE>business_owner</CUSTOMER_TYPE><LEAD_STAGE>pitched</LEAD_STAGE> at the end.
-
-   * If the customer asks for student reviews, feedback, or proofs:
-     Highlight that over 1,000+ Sri Lankan professionals and corporate leaders have trained with Flexlearn and experienced measurable career and revenue growth.
-   * Trainer Profile: Niroshan Gunatilaka (https://www.linkedin.com/in/niroshan-gunatilaka/)
-
-- PAYMENT CONFIRMATION & ACCOUNT ACTIVATION:
-   - When a customer sends a payment slip, receipt, screenshot, or confirms payment ("paid", "transfer done", "slip attached"):
-     Acknowledge the payment warmly, output <LEAD_STAGE>converted</LEAD_STAGE>, and give them the exact steps to create and use their account on www.flexlearn.lk:
-     1. Visit www.flexlearn.lk on phone or PC.
-     2. Create account / Sign in using their email and phone number.
-     3. Full 90-day access to all 17 modules and 367 Sinhala audio lessons will be unlocked.
-     4. Listen anytime during commute or breaks.
-   - When providing online payment, provide the direct PayHere link:
-     https://payhere.lk/pay/o8ac7c787
-   - When customer asks for 3-month plan or renewal, explain the 90-day access challenge (Rs 4,500 promo) and monthly subscription renewal link (https://payhere.lk/pay/oc94df555).
-
+- If a customer wants to order, guide them through collecting: name, phone, product selection with variations, quantity, and payment method.
 - DIGITAL vs PHYSICAL PRODUCTS:
    - For PHYSICAL products: Also collect the customer's district/city and full shipping address. Offer both Cash on Delivery (COD) and Bank Transfer as payment options. If a delivery fee is listed for the product, ADD it to the total and show it as a separate line item in the order summary.
 ${freeDeliveryThreshold > 0 ? `   - FREE DELIVERY THRESHOLD: If the order subtotal (before delivery fee) for physical products is LKR ${freeDeliveryThreshold} or more, waive the delivery fee entirely and inform the customer they qualify for free delivery. If below this threshold, apply the normal delivery fee.` : ""}
@@ -284,6 +247,9 @@ ${productCatalog || "No products available"}
 FREQUENTLY ASKED QUESTIONS:
 ${faqContext || "No FAQs configured"}
 
+WELCOME MESSAGE (for first-time customers):
+${welcomeMessage}
+
 When the customer completes an order, summarize the order details beautifully with emojis and confirm.
 
 CRITICAL ORDER INSTRUCTION:
@@ -294,7 +260,7 @@ Include this JSON block at the END of your confirmation message. The customer wo
 
 CRITICAL SECURITY RULE:
 - NEVER show raw JSON, code, data structures, or technical markup to the customer under ANY circumstances.
-- The ORDER_JSON, IMAGE_URL, VIDEO_URL, CUSTOMER_TYPE, LEAD_STAGE, and USED_FAQS tags are INVISIBLE system instructions. They must ONLY appear ONCE at the very END of your message, after all human-readable text.
+- The ORDER_JSON, IMAGE_URL, VIDEO_URL, and USED_FAQS tags are INVISIBLE system instructions. They must ONLY appear ONCE at the very END of your message, after all human-readable text.
 - NEVER write ORDER_JSON, IMAGE_URL, VIDEO_URL, or USED_FAQS in the middle of your reply.
 - NEVER output a JSON object as part of your conversational reply.
 - If a customer sends a photo or image (e.g. payment slip, receipt, screenshot), acknowledge it politely. Say something like "Thank you, I noted your payment" or ask them to confirm what the image is about. Do NOT attempt to describe or analyze the image.
@@ -316,11 +282,20 @@ CRITICAL SECURITY RULE:
     }
 
     const trimmedMessage = (message || "").trim();
+    const cleanNum = trimmedMessage.replace(/[\s\.\,\(\)\#️⃣]/g, "");
+
+    let userTurnContent = trimmedMessage;
+    if (cleanNum === "1" || cleanNum === "1️⃣" || trimmedMessage.toLowerCase() === "option 1") {
+      userTurnContent = "1 (I am a Working Professional / මම රැකියාවක නියුතු වෘත්තිකයෙක්)";
+    } else if (cleanNum === "2" || cleanNum === "2️⃣" || trimmedMessage.toLowerCase() === "option 2") {
+      userTurnContent = "2 (I am a Business Owner / Entrepreneur / මම ව්‍යාපාර හිමිකරුවෙක් / ව්‍යවසායකයෙක්)";
+    }
+
     const lastMsg = messages[messages.length - 1];
     if (!trimmedMessage) {
       messages.push({ role: "user", content: "[Customer sent a photo/media file. This is likely a payment slip or receipt. Acknowledge it politely and ask them to confirm if it's a payment confirmation. Do NOT output any JSON, tags, or code.]" });
-    } else if (!lastMsg || lastMsg.role !== "user" || lastMsg.content !== trimmedMessage) {
-      messages.push({ role: "user", content: trimmedMessage });
+    } else if (!lastMsg || lastMsg.role !== "user" || lastMsg.content !== userTurnContent) {
+      messages.push({ role: "user", content: userTurnContent });
     }
 
     const aiGenerateUrl = Deno.env.get("AI_GENERATE_URL");
