@@ -205,7 +205,10 @@ IMPORTANT GUIDELINES:
   - For order summaries, use emojis to mark each section (📦 Items, 💰 Total, 🚚 Delivery, 💳 Payment)
 
 - CUSTOMER QUALIFICATION & RESPONSES:
-   * The welcome greeting has ALREADY been sent to the customer on first contact. NEVER repeat the welcome message.
+   * CRITICAL ANTI-REPETITION RULE:
+     - DO NOT ASK WHETHER A PERSON IS A WORKING PROFESSIONAL OR A BUSINESS OWNER MORE THAN ONCE. It is repetitive and annoying to users.
+     - The welcome message has already asked this on first contact.
+     - In all subsequent replies, NEVER ask "Are you a Working Professional or a Business Owner?" again. Answer their questions and guide them directly.
    * If the customer sends "1", "1️⃣", "Working Professional", or indicates they are employed / working:
      - They have SELECTED Option 1 (Working Professional).
      - DO NOT REPEAT THE WELCOME MESSAGE OR ASK THEM FOR THEIR ROLE AGAIN.
@@ -450,7 +453,7 @@ CRITICAL SECURITY RULE:
         lower.includes("send audio") ||
         lower.includes("episodes")
       ) {
-        responseText = "You can explore audio lesson previews directly on www.flexlearn.lk! 🎧\n\n🎯 To guide you with the best training path, are you a Working Professional or a Business Owner?";
+        responseText = "You can explore audio lesson previews directly on www.flexlearn.lk! 🎧\n\nAll 17 modules and 367 Sinhala micro-audio lessons of the 90-Day Challenge are available for full streaming once enrolled. Would you like details on how to enroll?";
       } else if (
         lower.includes("testimonial") ||
         lower.includes("review") ||
@@ -458,7 +461,7 @@ CRITICAL SECURITY RULE:
         lower.includes("proof") ||
         lower.includes("students")
       ) {
-        responseText = "Over 1,000+ professionals and business owners have completed the Flexlearn 90-Day Challenge to accelerate their careers and sales! 🌟\n\nAre you a Working Professional or a Business Owner? 🚀";
+        responseText = "Over 1,000+ professionals and business owners have completed the Flexlearn 90-Day Challenge to accelerate their careers and sales! 🌟\n\nWould you like details on how to get started?";
       } else if (
         lower.includes("slip") ||
         lower.includes("receipt") ||
@@ -482,7 +485,7 @@ CRITICAL SECURITY RULE:
       ) {
         responseText = "🎯 90-Day SME Growth, Sales & Leadership Challenge\n💰 Promo Price: LKR 4,500 (Regular: LKR 5,000)\n\n💳 Pay online securely via PayHere:\nhttps://payhere.lk/pay/o8ac7c787\n\n🏦 Bank Transfer Details:\nSampath Bank - Rajagiriya Branch\nAccount: 112214017815\nName: Flexlearn Virtual College Pvt Ltd\n\nOnce paid, please send your payment slip here to get instant access! 🚀<LEAD_STAGE>qualified</LEAD_STAGE>";
       } else {
-        responseText = "Welcome to Flexlearn Virtual College! 🎓\nSri Lanka’s pioneering micro-audio learning platform for busy professionals and business owners.\n\nTo guide you with the most relevant training path, are you currently a Working Professional or a Business Owner? 🚀";
+        responseText = "Welcome to Flexlearn Virtual College! 🎓\nSri Lanka’s pioneering micro-audio learning platform for busy professionals and business owners.\n\nAll 17 modules and 367 Sinhala micro-audio lessons of the 90-Day SME Growth, Sales & Leadership Challenge are available on www.flexlearn.lk at our special promo price of LKR 4,500.\n\nHow can I assist you today? 😊";
       }
     }
 
