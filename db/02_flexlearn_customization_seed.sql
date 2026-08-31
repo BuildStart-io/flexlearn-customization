@@ -64,7 +64,7 @@ INSERT INTO "flexlearn-customization".settings (user_id, key, value) VALUES
   ('a3f5436e-3ce3-4959-ae7a-922b1ee05cbe', 'inactivity_followup', '{
     "enabled": true,
     "hours": 24,
-    "text": "Hi there! 👋 Just checking in from Flexlearn Virtual College. Have you had a chance to listen to the 5 free sample audios?\n\n🎧 Free Preview Audios: https://drive.google.com/drive/folders/1_0NMZk4MV-4jTGuH8_-WiJe-U162J-5w\n\n🎥 Previous Student Feedback: https://drive.google.com/drive/folders/1SAkQbZO5t0Y5EyX7gfZQuSEamlFM6d-l\n\nOur 10% special discount (LKR 4,500 for full 90-day access to all 17 modules) is active now. Let me know if you have any questions! 😊"
+    "text": "Hi there! 👋 Just checking in from Flexlearn Virtual College.\n\nOur 10% special discount (LKR 4,500 for full 90-day access to all 17 modules and 367 Sinhala micro-audio lessons) is active now on www.flexlearn.lk.\n\nLet me know if you would like to proceed with enrollment or if you have any questions! 😊"
   }'::jsonb),
   ('a3f5436e-3ce3-4959-ae7a-922b1ee05cbe', 'renewal_followup', '{
     "enabled": true,

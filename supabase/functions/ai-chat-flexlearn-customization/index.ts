@@ -212,8 +212,7 @@ IMPORTANT GUIDELINES:
      - Immediately provide the Working Professional pitch in fluent Sinhala (or matching language):
        Explain how the "90-Day SME Growth, Sales & Leadership Challenge" helps with promotions, career growth, workplace communication, managing superiors ("Managing Up"), handling conflicts, and time management with practical 3-5 min micro-audio lessons in Sinhala.
        Mention the full 90-day access to all 17 modules and 367 audios on www.flexlearn.lk for the special 10% OFF promo price of LKR 4,500 (regular LKR 5,000).
-       Provide the Free Preview (5 sample audio episodes) link: https://drive.google.com/drive/folders/1_0NMZk4MV-4jTGuH8_-WiJe-U162J-5w
-       Ask if they would like to listen to the free samples or proceed to enroll.
+       Ask if they would like to proceed with enrollment or if they have any questions.
        Append <CUSTOMER_TYPE>professional</CUSTOMER_TYPE><LEAD_STAGE>pitched</LEAD_STAGE> at the end.
 
    * If the customer sends "2", "2️⃣", "Business Owner", "Entrepreneur", or indicates they own a business:
@@ -222,12 +221,11 @@ IMPORTANT GUIDELINES:
      - Immediately provide the Business Owner pitch in fluent Sinhala (or matching language):
        Explain how the "90-Day SME Growth, Sales & Leadership Challenge" helps business owners scale revenue, master sales & tele-sales, hire and retain high performers (Sustainable Talent Acquisition), lead teams, and build self-operating businesses.
        Mention the full 90-day access to all 17 modules and 367 audios on www.flexlearn.lk for the special 10% OFF promo price of LKR 4,500 (regular LKR 5,000).
-       Provide the Free Preview (5 sample audio episodes) link: https://drive.google.com/drive/folders/1_0NMZk4MV-4jTGuH8_-WiJe-U162J-5w
-       Ask if they would like to listen to the free samples or proceed to enroll.
+       Ask if they would like to proceed with enrollment or if they have any questions.
        Append <CUSTOMER_TYPE>business_owner</CUSTOMER_TYPE><LEAD_STAGE>pitched</LEAD_STAGE> at the end.
 
-   * If the customer asks for student reviews, feedback, or proofs, provide the Student Video Feedbacks link:
-     https://drive.google.com/drive/folders/1SAkQbZO5t0Y5EyX7gfZQuSEamlFM6d-l
+   * If the customer asks for student reviews, feedback, or proofs:
+     Highlight that over 1,000+ Sri Lankan professionals and corporate leaders have trained with Flexlearn and experienced measurable career and revenue growth.
    * Trainer Profile: Niroshan Gunatilaka (https://www.linkedin.com/in/niroshan-gunatilaka/)
 
 - PAYMENT CONFIRMATION & ACCOUNT ACTIVATION:
@@ -452,7 +450,7 @@ CRITICAL SECURITY RULE:
         lower.includes("send audio") ||
         lower.includes("episodes")
       ) {
-        responseText = "🔹 You can listen to the Free Preview (first 5 episodes) on Google Drive here:\nhttps://drive.google.com/drive/folders/1_0NMZk4MV-4jTGuH8_-WiJe-U162J-5w\n\n🎯 To guide you better, are you a Working Professional or a Business Owner?";
+        responseText = "You can explore audio lesson previews directly on www.flexlearn.lk! 🎧\n\n🎯 To guide you with the best training path, are you a Working Professional or a Business Owner?";
       } else if (
         lower.includes("testimonial") ||
         lower.includes("review") ||
@@ -460,7 +458,7 @@ CRITICAL SECURITY RULE:
         lower.includes("proof") ||
         lower.includes("students")
       ) {
-        responseText = "Here is what our previous students and corporate clients have to say about the Flexlearn audio program! 🎥\n\n🔹 Student Video Feedbacks:\nhttps://drive.google.com/drive/folders/1SAkQbZO5t0Y5EyX7gfZQuSEamlFM6d-l\n\nAre you a Working Professional or a Business Owner? 🚀";
+        responseText = "Over 1,000+ professionals and business owners have completed the Flexlearn 90-Day Challenge to accelerate their careers and sales! 🌟\n\nAre you a Working Professional or a Business Owner? 🚀";
       } else if (
         lower.includes("slip") ||
         lower.includes("receipt") ||
