@@ -451,7 +451,18 @@ async function sendWhatsApp(
   imageUrl: string | null,
   sessionApiKey: string
 ) {
-  const body: any = { to, message, sessionApiKey };
+  const cleanMessage = (message || "")
+    .replace(/https?:\/\/drive\.google\.com[^\s\)]*/gi, "")
+    .replace(/^[👉\s\-\*\•]+\s*$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (!cleanMessage && !imageUrl) {
+    console.log(`[sendWhatsApp] Message empty after drive link sanitization, skipping`);
+    return;
+  }
+
+  const body: any = { to, message: cleanMessage, sessionApiKey };
   if (imageUrl) body.imageUrl = imageUrl;
 
   const res = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp-flexlearn-customization`, {

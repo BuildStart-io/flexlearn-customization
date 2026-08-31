@@ -101,10 +101,15 @@ serve(async (req) => {
 
     let res: Response | null = null;
 
+    // Clean any unwanted Google Drive links from outgoing messages
+    let cleanMessage = (message || "").replace(/https?:\/\/drive\.google\.com[^\s\)]*/gi, "").trim();
+    // Clean up empty lines or orphan arrows left behind by stripped drive links
+    cleanMessage = cleanMessage.replace(/^[👉\s\-\*\•]+\s*$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
+
     if (url && isDirect) {
       const fileName = filenameFromUrl(url);
       const file = { url, filename: fileName, mimetype: undefined as string | undefined };
-      const caption = message || "";
+      const caption = cleanMessage;
 
       try {
         switch (detectedType) {
@@ -129,8 +134,12 @@ serve(async (req) => {
         }
       }
     } else {
-      const fullText = (message || "").trim();
-      res = await wahaFetch("/api/sendText", { session: sessionName, chatId, text: fullText || rawUrl || "" }, 10000);
+      if (!cleanMessage && !rawUrl) {
+        return new Response(JSON.stringify({ success: true, skipped: "empty_after_sanitize" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      res = await wahaFetch("/api/sendText", { session: sessionName, chatId, text: cleanMessage || rawUrl || "" }, 10000);
     }
 
     const responseText = await res.text();
