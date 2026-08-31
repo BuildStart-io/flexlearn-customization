@@ -206,6 +206,15 @@ IMPORTANT GUIDELINES:
     Name: Jane Doe
   - For order summaries, use emojis to mark each section (📦 Items, 💰 Total, 🚚 Delivery, 💳 Payment)
 
+- CUSTOMER QUALIFICATION & ROLE IDENTIFICATION:
+  - The welcome greeting asks whether the customer is a (1) Working Professional or (2) Business Owner / Entrepreneur.
+  - INTELLIGENT PERSONA INFERENCE:
+    * If the customer mentions ANY job title, profession, workplace role, or employment background (e.g. Manager, Executive, Engineer, Developer, Accountant, Banking, IT, Doctor, Teacher, Sales, Officer, Employee, Job, "1", "Working Professional", etc.):
+      AUTOMATICALLY IDENTIFY them as a Working Professional. DO NOT ask whether they are a Working Professional or Business Owner again! Respond addressing their professional context directly (career growth, promotions, workplace communication, managing superiors, conflict resolution, time management).
+    * If the customer mentions ANY business, entrepreneurship, or company ownership role (e.g. Business Owner, Entrepreneur, Founder, CEO, Director, MD, Shop owner, Retail, Startup, Company, Trade, "2", etc.):
+      AUTOMATICALLY IDENTIFY them as a Business Owner. DO NOT ask whether they are a Working Professional or Business Owner again! Respond addressing their business context directly (revenue scaling, sales mastery, hiring/talent retention, team leadership, systems).
+    * NEVER ask whether a person is a Working Professional or Business Owner more than once. If what they typed fits either category even broadly, classify them accordingly and continue seamlessly.
+
 - If a customer wants to order, guide them through collecting: name, phone, product selection with variations, quantity, and payment method.
 - DIGITAL vs PHYSICAL PRODUCTS:
    - For PHYSICAL products: Also collect the customer's district/city and full shipping address. Offer both Cash on Delivery (COD) and Bank Transfer as payment options. If a delivery fee is listed for the product, ADD it to the total and show it as a separate line item in the order summary.
@@ -284,13 +293,33 @@ CRITICAL SECURITY RULE:
     }
 
     const trimmedMessage = (message || "").trim();
+    const cleanLower = trimmedMessage.toLowerCase();
     const cleanNum = trimmedMessage.replace(/[\s\.\,\(\)\#️⃣]/g, "");
 
     let userTurnContent = trimmedMessage;
-    if (cleanNum === "1" || cleanNum === "1️⃣" || trimmedMessage.toLowerCase() === "option 1") {
+
+    const professionalKeywords = [
+      "1", "1️⃣", "option 1", "working professional", "professional", "employee",
+      "manager", "executive", "engineer", "accountant", "developer", "officer",
+      "doctor", "teacher", "banking", "finance", "sales executive", "clerk",
+      "consultant", "job", "working", "work", "office", "career", "රැකියාව", "වෘත්තික", "මැනේජර්"
+    ];
+
+    const businessKeywords = [
+      "2", "2️⃣", "option 2", "business owner", "business", "entrepreneur",
+      "founder", "ceo", "director", "md", "shop", "store", "retail",
+      "startup", "company", "owner", "own business", "running a business", "trade",
+      "exporter", "importer", "freelancer", "agency", "ව්‍යාපාර", "ව්‍යවසායක"
+    ];
+
+    if (cleanNum === "1" || cleanNum === "1️⃣" || cleanLower === "option 1") {
       userTurnContent = "1 (I am a Working Professional / මම රැකියාවක නියුතු වෘත්තිකයෙක්)";
-    } else if (cleanNum === "2" || cleanNum === "2️⃣" || trimmedMessage.toLowerCase() === "option 2") {
+    } else if (cleanNum === "2" || cleanNum === "2️⃣" || cleanLower === "option 2") {
       userTurnContent = "2 (I am a Business Owner / Entrepreneur / මම ව්‍යාපාර හිමිකරුවෙක් / ව්‍යවසායකයෙක්)";
+    } else if (professionalKeywords.some(kw => cleanLower === kw || cleanLower.includes(kw))) {
+      userTurnContent = `${trimmedMessage} [User Role: Working Professional / රැකියාවක නියුතු වෘත්තිකයෙක්]`;
+    } else if (businessKeywords.some(kw => cleanLower === kw || cleanLower.includes(kw))) {
+      userTurnContent = `${trimmedMessage} [User Role: Business Owner / Entrepreneur / ව්‍යාපාර හිමිකරුවෙක්]`;
     }
 
     const lastMsg = messages[messages.length - 1];
