@@ -164,20 +164,32 @@ serve(async (req) => {
       }
     }
 
+    // Universal sanitizer function to remove Google Drive links and orphaned lines
+    const sanitizeDriveLinks = (txt: string) => {
+      if (!txt) return "";
+      return txt
+        .replace(/.*(?:drive\.google\.com|Google Drive).*\n?/gi, "")
+        .replace(/https?:\/\/drive\.google\.com[^\s\)]*/gi, "")
+        .replace(/Free Sample Episodes[^\n]*/gi, "")
+        .replace(/Student Video Feedbacks[^\n]*/gi, "")
+        .replace(/^[👉\s\-\*\•]+\s*$/gm, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+    };
+
     // Filter out any stale FAQs that contain Google Drive links
-    const cleanFaqs = faqs.filter(f => !f.answer?.includes("drive.google.com"));
+    const cleanFaqs = faqs.filter(f => !f.answer?.includes("drive.google.com") && !f.question?.includes("drive.google.com"));
     const faqContext = cleanFaqs.map(f => 
-      `[FAQ_ID:${f.id}] Q: ${f.question}\nA: ${f.answer}${f.products?.name ? ` (Related to: ${f.products.name})` : ""}`
+      `[FAQ_ID:${f.id}] Q: ${sanitizeDriveLinks(f.question)}\nA: ${sanitizeDriveLinks(f.answer)}${f.products?.name ? ` (Related to: ${f.products.name})` : ""}`
     ).join("\n\n");
 
     const trackedFaqIds = cleanFaqs.filter(f => f.is_tracked).map(f => f.id);
 
-    const conversationContext = (conversationHistory as ConversationMessage[])
-      .map(msg => `${msg.direction === "inbound" ? "Customer" : "Assistant"}: ${msg.message}`)
-      .join("\n");
-
     const customPromptSetting = settings.find(s => s.key === "custom_prompt" || s.key === "business_info")?.value;
-    const customPromptText = typeof customPromptSetting === "string" ? customPromptSetting : customPromptSetting?.text || "";
+    const rawCustomPromptText = typeof customPromptSetting === "string" ? customPromptSetting : customPromptSetting?.text || "";
+    const customPromptText = sanitizeDriveLinks(rawCustomPromptText);
+    const cleanProductCatalog = sanitizeDriveLinks(productCatalog);
+    const cleanWelcomeMessage = sanitizeDriveLinks(welcomeMessage);
 
     const systemPrompt = `You are an intelligent WhatsApp chatbot assistant for a business. You help customers with:
 1. Product inquiries
@@ -214,6 +226,8 @@ IMPORTANT GUIDELINES:
     * If the customer mentions ANY business, entrepreneurship, or company ownership role (e.g. Business Owner, Entrepreneur, Founder, CEO, Director, MD, Shop owner, Retail, Startup, Company, Trade, "2", etc.):
       AUTOMATICALLY IDENTIFY them as a Business Owner. DO NOT ask whether they are a Working Professional or Business Owner again! Respond addressing their business context directly (revenue scaling, sales mastery, hiring/talent retention, team leadership, systems).
     * NEVER ask whether a person is a Working Professional or Business Owner more than once. If what they typed fits either category even broadly, classify them accordingly and continue seamlessly.
+
+- CRITICAL PROHIBITION: NEVER output or provide any Google Drive links (drive.google.com) or cloud storage URLs under any circumstances.
 
 - If a customer wants to order, guide them through collecting: name, phone, product selection with variations, quantity, and payment method.
 - DIGITAL vs PHYSICAL PRODUCTS:
@@ -253,13 +267,13 @@ FAQ TRACKING:
 - If your response uses information from any FAQ to answer the customer, include a <USED_FAQS>id1,id2</USED_FAQS> tag at the END of your response listing the FAQ IDs you referenced. Only include IDs of FAQs you actually used.
 
 PRODUCT CATALOG:
-${productCatalog || "No products available"}
+${cleanProductCatalog || "No products available"}
 
 FREQUENTLY ASKED QUESTIONS:
 ${faqContext || "No FAQs configured"}
 
 WELCOME MESSAGE (for first-time customers):
-${welcomeMessage}
+${cleanWelcomeMessage}
 
 When the customer completes an order, summarize the order details beautifully with emojis and confirm.
 
@@ -285,10 +299,13 @@ CRITICAL SECURITY RULE:
 
     if (conversationHistory && conversationHistory.length > 0) {
       for (const msg of conversationHistory as ConversationMessage[]) {
-        messages.push({
-          role: msg.direction === "inbound" ? "user" : "assistant",
-          content: msg.message,
-        });
+        const cleanContent = sanitizeDriveLinks(msg.message);
+        if (cleanContent) {
+          messages.push({
+            role: msg.direction === "inbound" ? "user" : "assistant",
+            content: cleanContent,
+          });
+        }
       }
     }
 
@@ -706,8 +723,11 @@ CRITICAL SECURITY RULE:
     cleanResponse = cleanResponse.replace(/\{[^{}]*"order_items"[^}]*\}/g, "");
     cleanResponse = cleanResponse.replace(/\{[^{}]*"payment_method"[^}]*\}/g, "");
     cleanResponse = cleanResponse.replace(/\{[^{}]*"total_amount"[^}]*\}/g, "");
-    cleanResponse = cleanResponse.replace(/\{\s*"[^"]+"\s*:[\s\S]*?\}/g, "");
+    cleanResponse = cleanResponse.replace(/.*(?:drive\.google\.com|Google Drive).*\n?/gi, "");
     cleanResponse = cleanResponse.replace(/https?:\/\/drive\.google\.com[^\s\)]*/gi, "");
+    cleanResponse = cleanResponse.replace(/Free Sample Episodes[^\n]*\n?/gi, "");
+    cleanResponse = cleanResponse.replace(/Student Video Feedbacks[^\n]*\n?/gi, "");
+    cleanResponse = cleanResponse.replace(/^[👉\s\-\*\•]+\s*$/gm, "");
     cleanResponse = cleanResponse.replace(/\n{3,}/g, "\n\n").trim();
 
     await supabase.from("ai_usage_logs").insert({
