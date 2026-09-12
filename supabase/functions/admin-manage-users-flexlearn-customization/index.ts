@@ -64,6 +64,13 @@ serve(async (req) => {
     const { action, ...params } = await req.json();
     console.log(`[flexlearn-customization] Admin action: ${action} by ${caller.id}`);
 
+    const triggerCrmSync = () => {
+      fetch(`${supabaseUrl}/functions/v1/sync-usage-crm-global`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${supabaseAnonKey}`, "Content-Type": "application/json" }
+      }).catch(e => console.error("CRM sync trigger failed", e));
+    };
+
     switch (action) {
       case "create_user": {
         const { email, password, fullName, businessName, planTier } = params;
@@ -103,6 +110,7 @@ serve(async (req) => {
           .eq("user_id", newUser.user.id);
 
         console.log(`Created user ${newUser.user.id} with plan ${planTier}`);
+        triggerCrmSync();
         return new Response(JSON.stringify({ success: true, userId: newUser.user.id }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -139,6 +147,7 @@ serve(async (req) => {
           .eq("user_id", invitedUser.user.id);
 
         console.log(`Invited user ${invitedUser.user.id}`);
+        triggerCrmSync();
         return new Response(JSON.stringify({ success: true, userId: invitedUser.user.id }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -183,6 +192,8 @@ serve(async (req) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+
+        triggerCrmSync();
 
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
