@@ -198,6 +198,7 @@ serve(async (req) => {
 4. Providing payment information
 
 IMPORTANT GUIDELINES:
+- ALWAYS END WITH A QUESTION: At the end of every single response, ask a relevant, polite follow-up question to keep the conversation engaging and encourage the customer to reply.
 - Respond in the SAME LANGUAGE the customer uses. Auto-detect their language.
 - KEEP IT SHORT: WhatsApp messages must be concise and scannable. Aim for 2-4 short lines max per response. Never send walls of text.
 - Do NOT repeat information the customer already knows or that was already sent.
