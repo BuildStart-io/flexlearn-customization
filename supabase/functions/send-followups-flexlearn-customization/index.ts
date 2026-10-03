@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       const sessionApiKey = session?.session_api_key;
       if (!sessionApiKey) continue;
 
-      const cutoff = new Date(Date.now() - hours * 3600 * 1000).toISOString();
+      const cutoffTime = Date.now() - hours * 3600 * 1000;
       const windowStart = new Date(Date.now() - (hours * 3600 * 1000 + 14 * 24 * 3600 * 1000)).toISOString();
 
       const { data: convs } = await supabase
@@ -101,7 +101,8 @@ Deno.serve(async (req) => {
       for (const [key, entry] of perContact) {
         if (!entry.lastInbound) continue;
         if (entry.followupAfter) continue;
-        if (entry.lastInbound > cutoff) continue;
+        const lastInboundTime = new Date(entry.lastInbound.replace(" ", "T")).getTime();
+        if (isNaN(lastInboundTime) || lastInboundTime > cutoffTime) continue;
         if (orderKeys.has(key)) continue;
 
         const { data: takeover } = await supabase

@@ -5,3 +5,4 @@ dist/
 *.log
 .gemini/
 docker/volumes/db/data/*
+*.exp
